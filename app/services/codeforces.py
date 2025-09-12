@@ -1,0 +1,14 @@
+import requests
+
+
+BASE_URL = "https://codeforces.com/api/"
+
+def verify_handle(handle: str) -> bool:
+    """Check if a codeforces handle exists."""
+    try:
+        r = requests.get(f"{BASE_URL}user.info", params={"handles": handle}, timeout=5)
+        data = r.json()
+        return data.get("status") == "OK"
+    except Exception as e:
+        print(f"Error verifying handle: {e}")
+        return False
