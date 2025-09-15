@@ -1,5 +1,6 @@
 from pydantic import BaseModel, constr
 from enum import Enum
+from datetime import datetime
 
 class Division(str, Enum):
     Div1 = "Div 1"
@@ -24,7 +25,7 @@ class UserRead(BaseModel):
     email: str
     division: Division
     status: str
-    created_at: str
+    created_at: datetime
     role: str
     rating: int
 

@@ -5,8 +5,10 @@ BASE_URL = "https://codeforces.com/api/"
 
 def verify_handle(handle: str) -> bool:
     """Check if a codeforces handle exists."""
+    print("validating user", handle)
     try:
         r = requests.get(f"{BASE_URL}user.info", params={"handles": handle}, timeout=5)
+        print("response json:", r.json())
         data = r.json()
         return data.get("status") == "OK"
     except Exception as e:
