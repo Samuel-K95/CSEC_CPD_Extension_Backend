@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from .models import User
-from .schemas.user_schemas import UserCreate
-from .security import hash_password
+from ..models import User
+from ..schemas.user_schemas import UserCreate
+from ..security import hash_password
 
 
 def get_user_by_handle(db: Session, handle: str):
