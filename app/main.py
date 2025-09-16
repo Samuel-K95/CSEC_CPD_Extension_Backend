@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+
+from app.routers import attendance, contests, ratings
 from .db import Base, engine
 from .routers import users
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +18,9 @@ app.add_middleware(
 
 
 app.include_router(users.router)
+app.include_router(ratings.router)
+app.include_router(contests.router)
+app.include_router(attendance.router)
 
 @app.get("/")
 def read_root():

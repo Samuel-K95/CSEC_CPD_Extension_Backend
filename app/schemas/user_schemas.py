@@ -1,25 +1,11 @@
+from typing import List, Optional
 from pydantic import BaseModel, constr
 from enum import Enum
 from datetime import datetime
 
+from app.models import Division
 
 
-class Division(str, Enum):
-    Div1 = "Div 1"
-    Div2 = "Div 2"
-
-
-
-# User
-class UserStatus(str, Enum):
-    Active = "Active"
-    Terminated = "Terminated"
-    NolongerActive = "No longer Active"
-
-
-class UserRole(str, Enum):
-    Participant = "Participant"
-    Admin = "Admin"
 
 
 class UserBase(BaseModel):
@@ -50,3 +36,29 @@ class UserRead(BaseModel):
     class Config:
         orm_mode = True
 
+class ChangeStatusRequest(BaseModel):
+    status: str
+
+
+
+class RatingHistoryEntry(BaseModel):
+    contest_id: str
+    old_rating: int
+    new_rating: int
+    timestamp: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class UserProfile(BaseModel):
+    id: str
+    name: str
+    email: str
+    codeforces_handle: Optional[str]
+    division: Optional[str]
+    current_rating: Optional[int]
+    history: Optional[List[RatingHistoryEntry]] = None
+
+    class Config:
+        orm_mode = True

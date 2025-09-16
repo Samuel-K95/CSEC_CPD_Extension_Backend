@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from ..models import User
+from ..models import User, UserStatus
 from ..schemas.user_schemas import UserCreate
 from ..security import hash_password
+from app import models
 
 
 def get_user_by_handle(db: Session, handle: str):
@@ -21,3 +22,34 @@ def create_user(db:Session, user_in: UserCreate):
     db.refresh(user)
     return user
 
+def change_status(db: Session, handle: str, status: UserStatus):
+    user = get_user_by_handle(db, handle)
+    user.status = status
+    db.commit()
+    db.refresh()
+    return user
+
+
+
+def get_user_with_rating(db: Session, user_id: str):
+    """
+    Fetch a user and their current rating.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None
+
+    rating = db.query(models.Rating).filter(models.Rating.user_id == user_id).first()
+    return user, rating
+
+
+def get_user_rating_history(db: Session, user_id: str):
+    """
+    Fetch rating history for a user (optional).
+    """
+    return (
+        db.query(models.RatingHistory)
+        .filter(models.RatingHistory.user_id == user_id)
+        .order_by(models.RatingHistory.timestamp.asc())
+        .all()
+    )

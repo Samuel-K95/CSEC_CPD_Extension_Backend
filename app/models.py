@@ -48,13 +48,30 @@ class User(Base):
 
     assigned_contests = relationship("Contest" ,secondary=contest_preparer_table, back_populates="preparers")
     ratings = relationship("Rating",back_populates="user")
+    rating_history = relationship("RatingHistory", back_populates="user", cascade="all, delete-orphan")
 
+
+
+class RatingHistory(Base):
+    __tablename__ = "rating_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    contest_id = Column(Integer, ForeignKey("contests.id"), nullable=False)
+
+    old_rating = Column(Integer, nullable=False)
+    new_rating = Column(Integer, nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="rating_history")
+    contest = relationship("Contest", back_populates="rating_history")
 
 
 # Contest + Link Model
 
+
 class Contest(Base):
-    __table__ = "contests"
+    __tablename__ = "contests"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     link = Column(String, nullable=False)
@@ -63,6 +80,8 @@ class Contest(Base):
 
     preparers = relationship("User", secondary=contest_preparer_table, back_populates="assigned_contests")
     attendance_records = relationship("Attendance", back_populates="contest")
+    rating_history = relationship("RatingHistory", back_populates="contest", cascade="all, delete-orphan")
+
 
 
 # Attendance
@@ -90,7 +109,7 @@ class Rating(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
     current_rating = Column(Integer, default=1400, nullable=False)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="rating")
     

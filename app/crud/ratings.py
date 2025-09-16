@@ -4,6 +4,19 @@ from app.schemas import contest_schemas
 from typing import List, Optional
 from datetime import datetime
 
+
+def log_rating_change(db: Session, user_id: int, contest_id: int, old_rating: int, new_rating: int):
+    history_entry = models.RatingHistory(
+        user_id=user_id,
+        contest_id=contest_id,
+        old_rating=old_rating,
+        new_rating=new_rating
+    )
+    db.add(history_entry)
+    db.commit()
+    db.refresh(history_entry)
+    
+
 def get_or_create_rating(db: Session, user_id: int) -> models.Rating:
     """
     Get the rating record for a user in a specific contest.

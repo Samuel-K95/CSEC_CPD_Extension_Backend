@@ -14,3 +14,12 @@ def verify_handle(handle: str) -> bool:
     except Exception as e:
         print(f"Error verifying handle: {e}")
         return False
+
+
+def get_codeforces_standings_handles(contest_link: str) -> set[str]:
+    """
+    Placeholder: returns a set of Codeforces handles that actually competed.
+    Later you can integrate the Codeforces API here.
+    """
+    # Example mock result:
+    return set()

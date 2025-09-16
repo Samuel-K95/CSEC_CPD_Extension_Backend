@@ -16,3 +16,5 @@ class ContestRead(ContestBase):
     date: datetime
     preparers: List[UserRead] = []
 
+class AssignPreparersRequest(BaseModel):
+    preparer_ids: List[str]
