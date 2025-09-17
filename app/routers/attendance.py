@@ -22,7 +22,7 @@ def submit_attendance(
     current_user = Depends(preparer_dependency)
 ):
     for record in data:
-        attendance.record_attendance(db, contest_id, record.user_id, record.status, commit=False)
+        attendance.record_attendance(db, contest_id, record.user_id, record.status , commit=False)
 
     db.commit()
 

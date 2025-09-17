@@ -9,6 +9,7 @@ class AttendanceBase(BaseModel):
 class AttendanceCreate(AttendanceBase):
     user_id: str
     contest_id : str
+    status: AttendanceStatus
 
 class AttendanceRead(AttendanceBase):
     id: str

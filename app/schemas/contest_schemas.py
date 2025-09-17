@@ -3,10 +3,11 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.schemas.user_schemas import UserRead
+from app.models import Division
 
 class ContestBase(BaseModel):
     link: str
-    division: str
+    division: Division
 
 class ContestCreate(ContestBase):
     preparer_ids: Optional[List[str]] = []
