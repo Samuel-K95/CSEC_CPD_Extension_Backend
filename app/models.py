@@ -45,6 +45,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     role = Column(Enum(UserRole), default=UserRole.Participant, nullable=False)
     rating = Column(Integer, default=1400, nullable=False)
+    hashed_password = Column(String, nullable=False)
 
     assigned_contests = relationship("Contest" ,secondary=contest_preparer_table, back_populates="preparers")
     ratings = relationship("Rating",back_populates="user")
@@ -111,5 +112,17 @@ class Rating(Base):
     current_rating = Column(Integer, default=1400, nullable=False)
     last_updated = Column(DateTime, default=datetime.datetime.utcnow)
 
-    user = relationship("User", back_populates="rating")
-    
+    user = relationship("User", back_populates="ratings")
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_revoked = Column(Boolean, default=False)
+
+    user = relationship("User")

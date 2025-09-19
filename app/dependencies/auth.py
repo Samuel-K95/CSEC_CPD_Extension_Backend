@@ -6,14 +6,13 @@ from app import models
 from app.db import get_db
 from sqlalchemy import select
 from typing import Optional
+from dotenv import load_dotenv
+import os
 
+from app.config import settings
+from app.schemas import user_schemas
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
-SECRET_KEY = "Secret key"
-ALGORITHM = "HS256"
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
     """
@@ -27,14 +26,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
             raise credential_exception
+        token_data = user_schemas.TokenData(username=username)
     except JWTError:
         raise credential_exception
 
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(models.User).filter(models.User.codeforces_handle == token_data.username).first()
     if user is None:
         raise credential_exception
     return user

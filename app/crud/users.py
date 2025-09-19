@@ -9,13 +9,13 @@ def get_user_by_handle(db: Session, handle: str):
     return db.query(User).filter(User.codeforces_handle == handle).first()
 
 def create_user(db:Session, user_in: UserCreate):
+    hashed_password = hash_password(user_in.password)
     user = User(
         name=user_in.name,
         codeforces_handle=user_in.codeforces_handle,
         email=user_in.email,
         division=user_in.division,
-        rating=user_in.rating,
-        password=hash_password(user_in.password)
+        hashed_password=hashed_password
     )
     db.add(user)
     db.commit()

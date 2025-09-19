@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, EmailStr
 from enum import Enum
 from datetime import datetime
 
@@ -11,7 +11,7 @@ from app.models import Division
 class UserBase(BaseModel):
     name: constr(strip_whitespace=True, min_length=1) # type: ignore
     codeforces_handle: constr(strip_whitespace=True, min_length=1, max_length=100) # type: ignore
-    email: constr(strip_whitespace=True, min_length=1) # type: ignore
+    email: EmailStr
     division: Division
 
 class UserLogin(BaseModel):
@@ -19,7 +19,7 @@ class UserLogin(BaseModel):
     password: constr(strip_whitespace=True, min_length=6) # type: ignore
 
 class UserCreate(UserBase):
-    pass
+    password: str
 
 
 class UserRead(BaseModel):
@@ -35,6 +35,15 @@ class UserRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
+
 
 class ChangeStatusRequest(BaseModel):
     status: str
