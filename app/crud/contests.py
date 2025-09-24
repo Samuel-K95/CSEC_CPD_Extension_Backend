@@ -65,3 +65,18 @@ def remove_preparers_from_contest(db: Session, contest_id: str, preparer_ids: Li
     db.commit()
     db.refresh(contest)
     return contest
+
+def get_user_contests(db: Session, user) -> list[models.Contest]:
+    """
+    Return all contests the user has participated in (attendance), or all contests if admin.
+    """
+    from app.models import UserRole, Contest, Attendance
+    if user.role == UserRole.Admin:
+        return db.query(Contest).all()
+    else:
+        return (
+            db.query(Contest)
+            .join(Attendance, Contest.id == Attendance.contest_id)
+            .filter(Attendance.user_id == str(user.id))
+            .all()
+        )

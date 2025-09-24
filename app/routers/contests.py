@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.dependencies.auth import require_admin
+from app.dependencies.auth import require_admin, get_current_user
 from app.crud import contests 
 from app.schemas import contest_schemas
+from app.models import UserRole
+from app import models
 
 router = APIRouter(prefix="/api/contests", tags=["contests"])
 
@@ -54,3 +56,12 @@ def revoke_preparer(
         raise HTTPException(status_code=404, detail="Preparer not found for this contest")
 
     return {"message": "Preparer access revoked successfully"}
+
+@router.get("/my", response_model=list[contest_schemas.ContestRead])
+def list_my_contests(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """
+    List all contests the current user has participated in (attendance), or all contests if admin.
+    """
+    print("my contests endpoint called")
+    contests_list = contests.get_user_contests(db, current_user)
+    return contests_list

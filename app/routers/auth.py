@@ -38,6 +38,8 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
     
     return {"access_token": access_token, "refresh_token": refresh_token_str, "token_type": "bearer"}
 
+    
+
 @router.post("/refresh", response_model=user_schemas.Token)
 def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
     db_token = crud_refresh.get_refresh_token(db, token=refresh_token)

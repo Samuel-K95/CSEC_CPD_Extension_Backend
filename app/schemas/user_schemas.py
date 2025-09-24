@@ -32,6 +32,9 @@ class UserRead(BaseModel):
     created_at: datetime
     role: str
     rating: int
+    access_token: str
+    refresh_token: str
+    token_type: str
 
     class Config:
         orm_mode = True
