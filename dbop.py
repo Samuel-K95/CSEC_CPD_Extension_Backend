@@ -4,9 +4,9 @@ import sqlite3
 conn = sqlite3.connect("dev.db")
 cursor = conn.cursor()
 
-# Delete a specific row
+# Update the role of user with id=1 to 'Admin'
 user_id = 1
-cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+cursor.execute("UPDATE users SET role = ? WHERE id = ?", ("Admin", user_id))
 
 # Commit changes and close
 conn.commit()

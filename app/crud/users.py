@@ -53,3 +53,6 @@ def get_user_rating_history(db: Session, user_id: str):
         .order_by(models.RatingHistory.timestamp.asc())
         .all()
     )
+
+def get_all_users(db: Session):
+    return db.query(User).all()

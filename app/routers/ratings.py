@@ -22,7 +22,6 @@ def get_leaderboard(
         division = None
     else:
         division = getattr(current_user, "division", None)
-    print("current user", current_user)
     results = ratings.get_leaderboard(db, division)
 
     leaderboard = []

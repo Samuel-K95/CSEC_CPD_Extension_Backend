@@ -16,7 +16,12 @@ class UserBase(BaseModel):
 
 class UserLogin(BaseModel):
     codeforces_handle: constr(strip_whitespace=True, min_length=1, max_length=100) # type: ignore
-    password: constr(strip_whitespace=True, min_length=6) # type: ignore
+    role: str
+    access_token: str
+    refresh_token: str
+    token_type: str
+    division: Division
+    
 
 class UserCreate(UserBase):
     password: str
@@ -32,17 +37,13 @@ class UserRead(BaseModel):
     created_at: datetime
     role: str
     rating: int
-    access_token: str
-    refresh_token: str
-    token_type: str
+
 
     class Config:
         orm_mode = True
 
 class Token(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str
+    pass
 
 class TokenData(BaseModel):
     username: str | None = None
@@ -69,7 +70,8 @@ class UserProfile(BaseModel):
     email: str
     codeforces_handle: Optional[str]
     division: Optional[str]
-    current_rating: Optional[int]
+    current_rating: int
+    role: str
     history: Optional[List[RatingHistoryEntry]] = None
 
     class Config:

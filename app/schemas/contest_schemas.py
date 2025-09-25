@@ -16,6 +16,8 @@ class ContestRead(ContestBase):
     id: str
     date: datetime
     preparers: List[UserRead] = []
+    class Config:
+        orm_mode = True
 
 class AssignPreparersRequest(BaseModel):
     preparer_ids: List[str]

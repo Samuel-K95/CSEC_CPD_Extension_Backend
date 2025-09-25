@@ -15,7 +15,7 @@ import re
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
-@router.post("/login", response_model=user_schemas.Token)
+@router.post("/login", response_model=user_schemas.UserLogin)
 def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     user = users.get_user_by_handle(db, handle=form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -35,10 +35,16 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
         token=refresh_token_str, 
         expires_in=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
-    
-    return {"access_token": access_token, "refresh_token": refresh_token_str, "token_type": "bearer"}
 
-    
+    return ({
+        "access_token": access_token, 
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+        "codeforces_handle": user.codeforces_handle,
+        "role": user.role,
+        "division": user.division
+    })
+
 
 @router.post("/refresh", response_model=user_schemas.Token)
 def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):

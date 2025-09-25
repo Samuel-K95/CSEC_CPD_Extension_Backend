@@ -3,12 +3,19 @@ from app import models
 from app.schemas import contest_schemas
 from typing import List, Optional
 from sqlalchemy import delete
+import datetime
 
 
 def create_contest(db: Session, contest_in: contest_schemas.ContestCreate) -> models.Contest:
+    # Check for duplicate contest by link
+    existing = db.query(models.Contest).filter(models.Contest.link == contest_in.link).first()
+    if existing:
+        raise ValueError(f"Contest with link '{contest_in.link}' already exists.")
+    contest_date = datetime.datetime.utcnow()
     contest = models.Contest(
         link=contest_in.link,
-        division=contest_in.division
+        division=contest_in.division,
+        date=contest_date
     )
     
     db.add(contest)

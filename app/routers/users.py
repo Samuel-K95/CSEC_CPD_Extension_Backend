@@ -46,6 +46,15 @@ def get_me(
         email=user.email,
         codeforces_handle=user.codeforces_handle,
         division=user.division,
-        current_rating=rating.current_rating if rating else None,
+        role=user.role,
+        current_rating=user.rating,
         history=history
     )
+
+@router.get("/all", response_model=list[user_schemas.UserRead])
+def get_all_users(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """
+    Return all users in the database. Requires authentication.
+    """
+    users_list = users.get_all_users(db)
+    return users_list

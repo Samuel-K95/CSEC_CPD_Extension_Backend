@@ -15,10 +15,12 @@ def create_contest(
     db: Session = Depends(get_db),
     current_user = Depends(require_admin)
 ):
+    print("hitting create contest endpoint", contest_in)
     """
     Admin-only: Create a new contest and (optionally) assign one or more preparers.
     """
-    return contests.create_contest(db, contest_in)
+    contest_obj = contests.create_contest(db, contest_in)
+    return contest_schemas.ContestRead.from_orm(contest_obj)
 
 @router.post("/{contest_id}/assign-preparers", response_model=contest_schemas.ContestRead)
 def assign_preparers(
@@ -62,6 +64,5 @@ def list_my_contests(db: Session = Depends(get_db), current_user = Depends(get_c
     """
     List all contests the current user has participated in (attendance), or all contests if admin.
     """
-    print("my contests endpoint called")
     contests_list = contests.get_user_contests(db, current_user)
-    return contests_list
+    return [contest_schemas.ContestRead.from_orm(contest) for contest in contests_list]
