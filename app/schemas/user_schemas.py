@@ -15,6 +15,7 @@ class UserBase(BaseModel):
     division: Division
 
 class UserLogin(BaseModel):
+    id: int
     codeforces_handle: constr(strip_whitespace=True, min_length=1, max_length=100) # type: ignore
     role: str
     access_token: str

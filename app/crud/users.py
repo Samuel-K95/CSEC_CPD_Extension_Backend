@@ -8,6 +8,9 @@ from app import models
 def get_user_by_handle(db: Session, handle: str):
     return db.query(User).filter(User.codeforces_handle == handle).first()
 
+def get_users_by_division(db: Session, division: str):
+    return db.query(User).filter(User.division == division).all()
+
 def create_user(db:Session, user_in: UserCreate):
     hashed_password = hash_password(user_in.password)
     user = User(

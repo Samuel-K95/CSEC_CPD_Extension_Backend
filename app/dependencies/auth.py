@@ -54,8 +54,8 @@ def require_admin(current_user: models.User = Depends(get_current_user)) -> mode
 
 def require_preparer(
         contest_id: str,
-        db: Session = Depends(get_db),
-        current_user: models.User = Depends(get_current_user)
+        current_user: models.User,
+        db: Session = Depends(get_db)
     ) -> models.User:
     """
     Checks if the current user is a preparer for the given contest.

@@ -57,4 +57,13 @@ def get_all_users(db: Session = Depends(get_db), current_user = Depends(get_curr
     Return all users in the database. Requires authentication.
     """
     users_list = users.get_all_users(db)
-    return users_list
+    # Convert SQLAlchemy User objects to Pydantic models
+    return [user_schemas.UserRead.from_orm(user) for user in users_list]
+
+@router.get("/division/{division}", response_model=list[user_schemas.UserRead])
+def get_users_by_division(division: str, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """
+    Get all users in a specific division.
+    """
+    users_list = users.get_users_by_division(db, division)
+    return [user_schemas.UserRead.from_orm(user) for user in users_list]

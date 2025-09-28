@@ -37,6 +37,7 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
     )
 
     return ({
+        "id": user.id,
         "access_token": access_token, 
         "refresh_token": refresh_token_str,
         "token_type": "bearer",

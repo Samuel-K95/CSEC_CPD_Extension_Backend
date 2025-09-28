@@ -1,4 +1,5 @@
 import requests
+import re
 
 
 BASE_URL = "https://codeforces.com/api/"
@@ -15,12 +16,24 @@ def verify_handle(handle: str) -> bool:
         print(f"Error verifying handle: {e}")
         return False
 
+def extract_contest_id(contest_link: str) -> str:
+    """
+    Extracts the contest ID from a Codeforces contest link.
+    Example: "https://codeforces.com/contest/1234" -> "1234"
+    """
+    match = re.search(r'/(\d+)(?:/)?$', contest_link)
+    if match:
+        return match.group(1)
+    raise ValueError("Invalid Codeforces contest link")
 
-def get_codeforces_standings_handles(contest_id: str, as_manager: bool = False, from_row: int = 1, count: int = 0, show_unofficial: bool = True) -> dict:
+
+def get_codeforces_standings_handles(contest_link: str, as_manager: bool = False, from_row: int = 1, count: int = 0, show_unofficial: bool = True) -> dict:
     """
     Fetches contest standings from Codeforces API and returns a dictionary
     mapping user handles to their rank.
     """
+    print("getting codeforces standings", contest_link)
+    contest_id = extract_contest_id(contest_link)
     params = {
         "contestId": contest_id,
         "asManager": as_manager,
@@ -35,6 +48,7 @@ def get_codeforces_standings_handles(contest_id: str, as_manager: bool = False, 
         r.raise_for_status()  # Raise an exception for bad status codes
         data = r.json()
 
+        print("response json:", data)
         if data.get("status") != "OK":
             print(f"Error from Codeforces API: {data.get('comment')}")
             return {}
@@ -44,6 +58,8 @@ def get_codeforces_standings_handles(contest_id: str, as_manager: bool = False, 
             handle = row["party"]["members"][0]["handle"]
             rank = row["rank"]
             standings[handle] = rank
+
+
         
         return standings
 

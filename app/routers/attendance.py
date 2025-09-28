@@ -11,12 +11,13 @@ from app.services.ratings import process_ratings_after_attendance
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
-def preparer_dependency(contest_id: str):
-    return require_preparer(contest_id)
+# Dependency wrapper for preparer access
+def preparer_dependency(contest_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return require_preparer(contest_id, current_user, db)
 
-@router.post("/contests/{contest_id}/attendance")
+@router.post("/contests/{contest_id}/attendance", response_model=dict)
 def submit_attendance(
-    contest_id: str,
+    contest_id: str,    
     data: list[schemas.AttendanceCreate],
     db: Session = Depends(get_db),
     current_user = Depends(preparer_dependency)
@@ -26,7 +27,6 @@ def submit_attendance(
 
     db.commit()
 
-    
     # Trigger rating update
     process_ratings_after_attendance(db, contest_id, absence_penalty=-50)
 
@@ -34,7 +34,7 @@ def submit_attendance(
 
 
 
-@router.get("/{contest_id}/attendance")
+@router.get("/{contest_id}/attendance", response_model=dict)
 def get_contest_attendance( 
     contest_id: str,
     db: Session = Depends(get_db),
@@ -44,9 +44,11 @@ def get_contest_attendance(
     Preparer-only: Get list of all active participants in this contest's division.
     Pre-mark those who actually competed as Present.
     """
+    print("getting attendance for contest", contest_id)
     try:
         data = fetch_contest_attendance(db, contest_id)
     except ValueError as e:
+        print("error", e)
         raise HTTPException(status_code=404, detail=str(e))
 
     return {"contest_id": contest_id, "participants": data}

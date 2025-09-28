@@ -51,7 +51,8 @@ def fetch_contest_attendance(db: Session, contest_id: str):
     Returns a list of all active participants for the contest's division
     with their pre-marked attendance status present.
     """
-    contest =  db.query(models.Attendance).filter(models.Attendance.contest_id == contest_id).first()
+    print("fetching contest attendance for contest:", contest_id)
+    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
     if not contest:
         raise ValueError("Contest not found")
 
@@ -66,6 +67,7 @@ def fetch_contest_attendance(db: Session, contest_id: str):
     )
 
     competed_user_handles = get_codeforces_standings_handles(contest.link)
+    print("competed user handles:", competed_user_handles)
 
 
     # existing_attendance = {
@@ -84,7 +86,7 @@ def fetch_contest_attendance(db: Session, contest_id: str):
         results.append(
             {
                 "user_id": user.id,
-                "username": user.username,
+                "username": user.name,
                 "codeforces_handle": user.codeforces_handle,
                 "division" : user.division,
                 "status": status
