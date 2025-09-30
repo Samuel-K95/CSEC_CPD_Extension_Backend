@@ -86,5 +86,17 @@ def get_contest_preparers(contest_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Contest not found")
     
 
+    # get the preparers from the contest_preparers table
+    filtered_preparers = (
+        db.query(models.User)
+        .join(models.contest_preparer_table, models.User.id == models.contest_preparer_table.c.user_id)
+        .filter(models.contest_preparer_table.c.contest_id == contest_id)
+        .all()
+    )
 
-    return [user_schemas.UserRead.from_orm(preparer) for preparer in contest.preparers]
+    reformatted_preparers = [user_schemas.UserRead.from_orm(user) for user in filtered_preparers]
+
+    # Print the user ids of the prepared preparers
+    print("preparers are", reformatted_preparers, len(reformatted_preparers))
+
+    return reformatted_preparers
