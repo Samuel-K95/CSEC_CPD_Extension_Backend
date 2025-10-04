@@ -4,7 +4,6 @@ from app.db import get_db
 from app.dependencies.auth import require_admin, get_current_user
 from app.crud import contests 
 from app.schemas import contest_schemas, user_schemas
-from app.models import UserRole
 from app import models
 
 router = APIRouter(prefix="/api/contests", tags=["contests"])

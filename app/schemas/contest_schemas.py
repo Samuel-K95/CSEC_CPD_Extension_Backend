@@ -7,6 +7,7 @@ from app.models import Division
 
 class ContestBase(BaseModel):
     link: str
+    name: str
     division: Division
 
 class ContestCreate(ContestBase):

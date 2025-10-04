@@ -74,7 +74,9 @@ class RatingHistory(Base):
 class Contest(Base):
     __tablename__ = "contests"
 
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=True)
     link = Column(String, nullable=False)
     division = Column(Enum(Division), nullable=False)
     date = Column(DateTime, nullable=False)
