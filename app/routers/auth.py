@@ -43,7 +43,10 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
         "token_type": "bearer",
         "codeforces_handle": user.codeforces_handle,
         "role": user.role,
-        "division": user.division
+        "division": user.division,
+        "name": user.name,
+        "email": user.email,
+        "current_rating": user.rating
     })
 
 

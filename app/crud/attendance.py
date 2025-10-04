@@ -70,11 +70,6 @@ def fetch_contest_attendance(db: Session, contest_id: str):
     print("competed user handles:", competed_user_handles)
 
 
-    # existing_attendance = {
-    #     a.user_id: a for a in crud.attendance.get_attendance_for_contest(db, contest_id)
-    # }
-
-
     results = []
     for user in users:
         status = (

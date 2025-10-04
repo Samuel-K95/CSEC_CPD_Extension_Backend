@@ -22,6 +22,9 @@ class UserLogin(BaseModel):
     refresh_token: str
     token_type: str
     division: Division
+    name: str
+    email: str
+    current_rating: int
     
 
 class UserCreate(UserBase):

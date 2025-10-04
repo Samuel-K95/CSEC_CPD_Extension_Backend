@@ -65,5 +65,6 @@ def get_users_by_division(division: str, db: Session = Depends(get_db), current_
     """
     Get all users in a specific division.
     """
+    print("getting all users in division", division)
     users_list = users.get_users_by_division(db, division)
     return [user_schemas.UserRead.from_orm(user) for user in users_list]

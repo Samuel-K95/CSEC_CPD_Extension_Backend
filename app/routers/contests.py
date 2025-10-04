@@ -99,3 +99,13 @@ def get_contest_preparers(contest_id: str, db: Session = Depends(get_db)):
     print("preparers are", reformatted_preparers, len(reformatted_preparers))
 
     return reformatted_preparers
+
+@router.get("/{contest_id}", response_model=contest_schemas.ContestRead)
+def get_contest_details(contest_id: str, db: Session = Depends(get_db)):
+    """
+    Get details of a specific contest by its ID.
+    """
+    contest = contests.get_contest(db, contest_id)
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+    return contest_schemas.ContestRead.from_orm(contest)
