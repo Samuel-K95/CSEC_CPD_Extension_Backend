@@ -29,9 +29,13 @@ def submit_attendance(
     print("attendance recorded", body.attendance)
     print("ranking data received", body.ranking_data)
 
+    # Process ratings after attendance submission
+    rating_summary = process_ratings_after_attendance(db, contest_id, 5, body.ranking_data)
+
     return {
         "message": "Attendance and ranking data recorded",
-        "ranking_data": body.ranking_data
+        "ranking_data": body.ranking_data,
+        "rating_summary": rating_summary
     }
 
 

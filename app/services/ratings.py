@@ -6,38 +6,57 @@ from app.crud.ratings import log_rating_change
 
 from app.services.codeforces import get_codeforces_standings_handles
 
-def process_ratings_after_attendance(db: Session, contest_id: str, absence_penalty: int):
+def process_ratings_after_attendance(db: Session, contest_id: str, absence_penalty: int, ranking_data: list):
     """
     Process ratings for all users after attendance submission.
     Returns a summary of what happened (counts and rating changes).
     """
+    print(f"[RATINGS] Starting rating update for contest: {contest_id}")
     contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
     if not contest:
+        print(f"[RATINGS] Contest {contest_id} not found!")
         raise ValueError(f"Contest {contest_id} not found")
 
-    # Fetch standings from Codeforces API
-    standings = get_codeforces_standings_handles(contest.id)
+    # Fetch standings from frontend ranking_data
+    standings = ranking_data
+    print(f"[RATINGS] Raw standings received: {standings}")
+    for entry in standings:
+        if entry['handle'].endswith('#'):
+            entry['handle'] = entry['handle'][:-1]
+    print(f"[RATINGS] Cleaned standings: {standings}")
+
     if not standings:
-        # Handle case where standings are not available
+        print("[RATINGS] No standings data available!")
         return {"error": "Could not fetch contest standings."}
 
     attendance_records = contest.attendance_records
+    print(f"[RATINGS] Attendance records: {attendance_records}")
     present_count = absent_count = permission_count = 0
     rating_changes = []
 
     for record in attendance_records:
+        print(f"[RATINGS] Processing attendance record: {record}")
         user = db.query(models.User).filter(models.User.id == record.user_id).first()
-        if not user or user.status != models.UserStatus.ACTIVE:
+        if not user or user.status != models.UserStatus.Active:
+            print(f"[RATINGS] Skipping user {record.user_id} (not found or inactive)")
             continue
 
         rating = ratings.get_or_create_rating(db, record.user_id)
         old_rating = rating.current_rating
+        print(f"[RATINGS] User {user.codeforces_handle} old rating: {old_rating}")
 
         if record.status == models.AttendanceStatus.PRESENT:
             present_count += 1
-            user_rank = standings.get(user.codeforces_handle)
+            print(f"[RATINGS] User {user.codeforces_handle} marked PRESENT")
+            user_rank = None
+            for entry in standings:
+                if entry['handle'] == user.codeforces_handle:
+                    user_rank = int(entry['rank'])
+                    break
+            print(f"[RATINGS] User {user.codeforces_handle} rank: {user_rank}")
             if user_rank is not None:
                 new_rating = calculate_codeforces_rating(db, record.user_id, contest_id, standings)
+                print(f"[RATINGS] User {user.codeforces_handle} new rating: {new_rating}")
                 ratings.update_rating(db, record.user_id, new_rating)
                 rating_changes.append({
                     "user_id": user.id,
@@ -46,11 +65,12 @@ def process_ratings_after_attendance(db: Session, contest_id: str, absence_penal
                     "new_rating": new_rating
                 })
                 log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=new_rating)
-    
         elif record.status == models.AttendanceStatus.ABSENT:
             absent_count += 1
+            print(f"[RATINGS] User {user.codeforces_handle} marked ABSENT")
             ratings.apply_absence_penalty(db, record.user_id, absence_penalty)
             new_rating = old_rating - absence_penalty
+            print(f"[RATINGS] User {user.codeforces_handle} penalized rating: {new_rating}")
             rating_changes.append({
                 "user_id": user.id,
                 "handle": user.codeforces_handle,
@@ -58,12 +78,14 @@ def process_ratings_after_attendance(db: Session, contest_id: str, absence_penal
                 "new_rating": new_rating
             })
             log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=new_rating)
-
         elif record.status == models.AttendanceStatus.PERMISSION:
             permission_count += 1
+            print(f"[RATINGS] User {user.codeforces_handle} marked PERMISSION")
             log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=old_rating)
 
     db.commit()
+    print(f"[RATINGS] Rating update complete. Present: {present_count}, Absent: {absent_count}, Permission: {permission_count}")
+    print(f"[RATINGS] Rating changes: {rating_changes}")
 
     return {
         "present": present_count,
@@ -77,6 +99,8 @@ def calculate_codeforces_rating(db: Session, user_id: str, contest_id: str, stan
     """
     Calculate the new rating for a single participant using Elo-based logic.
     """
+    print("[RATINGS] Calculating new rating for user_id:", user_id)
+    print("parameters are ", contest_id, standings, k_factor)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     user_rating = ratings.get_or_create_rating(db, user.id).current_rating
     user_rank = standings.get(user.codeforces_handle)
