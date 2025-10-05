@@ -91,13 +91,13 @@ class Contest(Base):
 
 class AttendanceStatus(enum.Enum):
     PRESENT = "Present"
-    PERMISSION = "Permission"
+    EXCUSED = "Excused"
     ABSENT = "Absent"
 
 class Attendance(Base):
     __tablename__ = "attendance"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid()))
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     contest_id = Column(String, ForeignKey("contests.id"), nullable=False)
     status = Column(Enum(AttendanceStatus), nullable=False, default=AttendanceStatus.PRESENT)

@@ -33,7 +33,6 @@ def change_status(db: Session, handle: str, status: UserStatus):
     return user
 
 
-
 def get_user_with_rating(db: Session, user_id: str):
     """
     Fetch a user and their current rating.
@@ -59,3 +58,19 @@ def get_user_rating_history(db: Session, user_id: str):
 
 def get_all_users(db: Session):
     return db.query(User).all()
+
+def update_user(db: Session, user_id: str, updates: dict):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None
+
+    for key, value in updates.items():
+        if hasattr(user, key) and value is not None:
+            setattr(user, key, value)
+
+    if 'password' in updates and updates['password']:
+        user.hashed_password = hash_password(updates['password'])
+
+    db.commit()
+    db.refresh(user)
+    return user

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 def preparer_dependency(contest_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     return require_preparer(contest_id, current_user, db)
 
-@router.post("/contests/{contest_id}/attendance", response_model=dict)
+@router.post("/{contest_id}/attendance", response_model=dict)
 def submit_attendance(
     contest_id: str,    
     data: list[schemas.AttendanceCreate],
@@ -25,10 +25,14 @@ def submit_attendance(
     for record in data:
         attendance.record_attendance(db, contest_id, record.user_id, record.status , commit=False)
 
+    
     db.commit()
-
+    print("attendance recorded", data)
     # Trigger rating update
-    process_ratings_after_attendance(db, contest_id, absence_penalty=-50)
+
+
+    ## Chore change this!
+    # process_ratings_after_attendance(db, contest_id, absence_penalty=-50)
 
     return {"message": "Attendance recorded and ratings updated"}
 

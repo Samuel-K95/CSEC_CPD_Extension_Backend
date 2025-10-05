@@ -16,6 +16,7 @@ def record_attendance(db: Session, contest_id: str, user_id: str, status: models
 
     if existing:
         existing.status = status
+        obj = existing
     else:
         attendance = models.Attendance(
             contest_id=contest_id,
@@ -23,13 +24,14 @@ def record_attendance(db: Session, contest_id: str, user_id: str, status: models
             status=status
         )
         db.add(attendance)
+        db.flush()  
+        obj = attendance
 
     if commit:
         db.commit()
 
-    db.refresh(existing if existing else attendance)
-    
-    return existing if existing else attendance
+    db.refresh(obj)
+    return obj
 
 
 

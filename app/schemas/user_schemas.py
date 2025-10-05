@@ -7,6 +7,14 @@ from app.models import Division
 
 
 
+class UserUpdate(BaseModel):
+    name: str
+    email: str
+    codeforces_handle: Optional[str] = None
+    password: Optional[str] = None
+    confirm_password: Optional[str] = None
+
+
 
 class UserBase(BaseModel):
     name: constr(strip_whitespace=True, min_length=1) # type: ignore
@@ -41,6 +49,7 @@ class UserRead(BaseModel):
     created_at: datetime
     role: str
     rating: int
+    response: Optional[str] = None  
 
 
     class Config:
