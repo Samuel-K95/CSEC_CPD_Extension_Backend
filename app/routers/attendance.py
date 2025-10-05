@@ -17,25 +17,22 @@ def preparer_dependency(contest_id: str, current_user: models.User = Depends(get
 
 @router.post("/{contest_id}/attendance", response_model=dict)
 def submit_attendance(
-    contest_id: str,    
-    data: list[schemas.AttendanceCreate],
+    contest_id: str,
+    body: schemas.SubmitAttendanceRequest,
     db: Session = Depends(get_db),
     current_user = Depends(preparer_dependency)
 ):
-    for record in data:
-        attendance.record_attendance(db, contest_id, record.user_id, record.status , commit=False)
+    for record in body.attendance:
+        attendance.record_attendance(db, contest_id, record.user_id, record.status, commit=False)
 
-    
     db.commit()
-    print("attendance recorded", data)
-    # Trigger rating update
+    print("attendance recorded", body.attendance)
+    print("ranking data received", body.ranking_data)
 
-
-    ## Chore change this!
-    # process_ratings_after_attendance(db, contest_id, absence_penalty=-50)
-
-    return {"message": "Attendance recorded and ratings updated"}
-
+    return {
+        "message": "Attendance and ranking data recorded",
+        "ranking_data": body.ranking_data
+    }
 
 
 @router.get("/{contest_id}/attendance", response_model=dict)
