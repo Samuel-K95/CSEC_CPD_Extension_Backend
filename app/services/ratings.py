@@ -1,143 +1,75 @@
-import math
+from app.db import get_db
+from app.models import User, Contest, Rating, RatingHistory, Division
+from app.crud.users import get_users_by_division 
 from sqlalchemy.orm import Session
-from app import models
-from app.crud import ratings
-from app.crud.ratings import log_rating_change
+from app.schemas import attendance_schemas
 
-from app.services.codeforces import get_codeforces_standings_handles
-
-def process_ratings_after_attendance(db: Session, contest_id: str, absence_penalty: int, ranking_data: list):
-    """
-    Process ratings for all users after attendance submission.
-    Returns a summary of what happened (counts and rating changes).
-    """
-    print(f"[RATINGS] Starting rating update for contest: {contest_id}")
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
-    if not contest:
-        print(f"[RATINGS] Contest {contest_id} not found!")
-        raise ValueError(f"Contest {contest_id} not found")
-
-    # Fetch standings from frontend ranking_data
-    standings = ranking_data
-    print(f"[RATINGS] Raw standings received: {standings}")
-    for entry in standings:
-        if entry['handle'].endswith('#'):
-            entry['handle'] = entry['handle'][:-1]
-    print(f"[RATINGS] Cleaned standings: {standings}")
-
-    if not standings:
-        print("[RATINGS] No standings data available!")
-        return {"error": "Could not fetch contest standings."}
-
-    attendance_records = contest.attendance_records
-    print(f"[RATINGS] Attendance records: {attendance_records}")
-    present_count = absent_count = permission_count = 0
-    rating_changes = []
-
-    for record in attendance_records:
-        print(f"[RATINGS] Processing attendance record: {record}")
-        user = db.query(models.User).filter(models.User.id == record.user_id).first()
-        if not user or user.status != models.UserStatus.Active:
-            print(f"[RATINGS] Skipping user {record.user_id} (not found or inactive)")
-            continue
-
-        rating = ratings.get_or_create_rating(db, record.user_id)
-        old_rating = rating.current_rating
-        print(f"[RATINGS] User {user.codeforces_handle} old rating: {old_rating}")
-
-        if record.status == models.AttendanceStatus.PRESENT:
-            present_count += 1
-            print(f"[RATINGS] User {user.codeforces_handle} marked PRESENT")
-            user_rank = None
-            for entry in standings:
-                if entry['handle'] == user.codeforces_handle:
-                    user_rank = int(entry['rank'])
-                    break
-            print(f"[RATINGS] User {user.codeforces_handle} rank: {user_rank}")
-            if user_rank is not None:
-                new_rating = calculate_codeforces_rating(db, record.user_id, contest_id, standings)
-                print(f"[RATINGS] User {user.codeforces_handle} new rating: {new_rating}")
-                ratings.update_rating(db, record.user_id, new_rating)
-                rating_changes.append({
-                    "user_id": user.id,
-                    "handle": user.codeforces_handle,
-                    "old_rating": old_rating,
-                    "new_rating": new_rating
-                })
-                log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=new_rating)
-        elif record.status == models.AttendanceStatus.ABSENT:
-            absent_count += 1
-            print(f"[RATINGS] User {user.codeforces_handle} marked ABSENT")
-            ratings.apply_absence_penalty(db, record.user_id, absence_penalty)
-            new_rating = old_rating - absence_penalty
-            print(f"[RATINGS] User {user.codeforces_handle} penalized rating: {new_rating}")
-            rating_changes.append({
-                "user_id": user.id,
-                "handle": user.codeforces_handle,
-                "old_rating": old_rating,
-                "new_rating": new_rating
-            })
-            log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=new_rating)
-        elif record.status == models.AttendanceStatus.PERMISSION:
-            permission_count += 1
-            print(f"[RATINGS] User {user.codeforces_handle} marked PERMISSION")
-            log_rating_change(db, user_id=record.user_id, contest_id=contest_id, old_rating=old_rating, new_rating=old_rating)
-
-    db.commit()
-    print(f"[RATINGS] Rating update complete. Present: {present_count}, Absent: {absent_count}, Permission: {permission_count}")
-    print(f"[RATINGS] Rating changes: {rating_changes}")
-
-    return {
-        "present": present_count,
-        "absent": absent_count,
-        "permission": permission_count,
-        "rating_changes": rating_changes
-    }
-
-
-def calculate_codeforces_rating(db: Session, user_id: str, contest_id: str, standings: dict, k_factor: int = 40) -> int:
-    """
-    Calculate the new rating for a single participant using Elo-based logic.
-    """
-    print("[RATINGS] Calculating new rating for user_id:", user_id)
-    print("parameters are ", contest_id, standings, k_factor)
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    user_rating = ratings.get_or_create_rating(db, user.id).current_rating
-    user_rank = standings.get(user.codeforces_handle)
-
-    if user_rank is None:
-        # User did not participate, rating remains unchanged
-        return user_rating
-
-    expected_score_sum = 0.0
-    actual_score_sum = 0.0
+class Codeforces:
+    def __init__(self, db: Session,  ranking: dict, div: Division, attendance: attendance_schemas.AttendanceCreate):
+        print("[DEBUG] Codeforces __init__ called", flush=True)
+        self.div = div
+        self.ranking = ranking
+        self.db = db
+        self.attendace=attendance
+        self.participant = self.build_participant()
     
-    # Get all users who participated in the contest
-    present_users = db.query(models.User).filter(models.User.codeforces_handle.in_(standings.keys())).all()
-    total_opponents = len(present_users) - 1
+    def clean_handle(self, handle):
+        if handle.endswith("#"):
+            return handle[:-1]
+        return handle
+    
+    def get_user_attendance(self, user_id):
+        for record in self.attendace:
+            if record.user_id == user_id:
+                return record.status
+        return attendance_schemas.AttendanceStatus.ABSENT
 
-    for opponent in present_users:
-        if opponent.id == user_id:
-            continue
+    def build_participant(self):
+        """
+        participants: list of all users with attributes:
 
-        opponent_rating = ratings.get_or_create_rating(db, opponent.id).current_rating
-        opponent_rank = standings.get(opponent.codeforces_handle)
+            - codeforces_handle
 
-        # Expected score using Elo formula
-        expected_score = 1 / (1 + math.pow(10, (opponent_rating - user_rating) / 400))
-        expected_score_sum += expected_score
+            - status ∈ {Active, Terminated, No Longer Active}
 
-        # Actual score: 1 if user ranked better, 0 if worse, 0.5 if tie
-        if user_rank < opponent_rank:
-            actual_score_sum += 1
-        elif user_rank == opponent_rank:
-            actual_score_sum += 0.5
+            - rating (current rating, default 1500)
 
-    expected_score_avg = expected_score_sum / total_opponents if total_opponents > 0 else 0
-    actual_score_avg = actual_score_sum / total_opponents if total_opponents > 0 else 0
+            - attendance_status ∈ {Present, Permission, Absent}
 
-    # 3. Elo delta
-    delta = k_factor * (actual_score_avg - expected_score_avg)
+            - division (to match contest division)
+        """
+        print("building participants", flush=True)
+        division_users = get_users_by_division(db=self.db, division=self.div)
+        handle_to_user = {user.codeforces_handle: user for user in division_users}
+        participants = []
+        
+        print("ranking", self.ranking),
+        print("handle_to_user", handle_to_user)
+        for rank, entry in enumerate(self.ranking):
+            handle = entry.get("handle")
+            handle = self.clean_handle(handle=handle)
+            print("handle", handle)
+            user = handle_to_user.get(handle)
+            print(f"hande to user of {handle}", user)
+            if not user:
+                continue  
 
-    # 4. Return new rating (rounded to int)
-    return max(0, round(user_rating + delta))  # clamp to >= 0
+            participant_info = {
+                "user_id": user.id,
+                "codeforces_handle": handle,
+                "status": user.status,
+                "rating": user.rating,
+                "attendance_status": self.get_user_attendance(user.id),
+                "division": user.division,
+                "rank": rank,
+                "problems_solved": entry.get("score", 0),
+                "penalty": entry.get("penalty", 0)
+            }
+            participants.append(participant_info)
+
+        print("participants", participants, len(participants))
+        for participant in participants:
+            print("participant", participant, flush=True)
+
+        return participants
+

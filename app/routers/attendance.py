@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.crud.contests import get_contest
 from app.dependencies.auth import get_current_user, require_admin, require_preparer
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -6,7 +7,7 @@ from app import models
 from app.crud import attendance
 from app.schemas import attendance_schemas as schemas
 from app.crud.attendance import fetch_contest_attendance
-from app.services.ratings import process_ratings_after_attendance
+from app.services.ratings import Codeforces
 
 
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
@@ -22,15 +23,18 @@ def submit_attendance(
     db: Session = Depends(get_db),
     current_user = Depends(preparer_dependency)
 ):
-    for record in body.attendance:
-        attendance.record_attendance(db, contest_id, record.user_id, record.status, commit=False)
+    contest = get_contest(db=db, contest_id=contest_id)
+    # for record in body.attendance:
+    #     attendance.record_attendance(db, contest_id, record.user_id, record.status, commit=False)
 
-    db.commit()
+    # db.commit()
     print("attendance recorded", body.attendance)
     print("ranking data received", body.ranking_data)
 
-    # Process ratings after attendance submission
-    rating_summary = process_ratings_after_attendance(db, contest_id, 5, body.ranking_data)
+
+    rating_summary = []
+    codeforces = Codeforces(db=db, div=contest.division, ranking=body.ranking_data, attendance=body.attendance)
+    
 
     return {
         "message": "Attendance and ranking data recorded",
