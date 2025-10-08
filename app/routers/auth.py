@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
@@ -9,6 +9,13 @@ from app.security import (
 from app.config import settings
 from app.db import get_db
 from app.schemas import user_schemas
+
+
+# Schema for refresh token request
+from pydantic import BaseModel
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 from app.services.codeforces import verify_handle
 from datetime import timedelta, datetime
 import re
@@ -51,9 +58,12 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
 
 
 @router.post("/refresh", response_model=user_schemas.Token)
-def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
+def refresh_access_token(
+    req: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
+    refresh_token = req.refresh_token
     db_token = crud_refresh.get_refresh_token(db, token=refresh_token)
-    
     if not db_token or db_token.is_revoked or db_token.expires_at < datetime.utcnow():
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -75,11 +85,11 @@ def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
     # Issue new tokens
     new_access_token = create_access_token(data={"sub": user.codeforces_handle})
     new_refresh_token = create_refresh_token(data={"sub": user.codeforces_handle})
-    
+
     crud_refresh.create_refresh_token(
-        db, 
-        user_id=user.id, 
-        token=new_refresh_token, 
+        db,
+        user_id=user.id,
+        token=new_refresh_token,
         expires_in=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
 

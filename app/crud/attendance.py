@@ -3,6 +3,20 @@ from app import models
 from typing import List
 from app.services.codeforces import get_codeforces_standings_handles
 from app.schemas import  user_schemas
+from app.models import ContestDataSnapshot
+import datetime
+import enum
+
+def to_serializable(obj):
+    if isinstance(obj, enum.Enum):
+        return obj.value
+    if hasattr(obj, "dict"):
+        return {k: to_serializable(v) for k, v in obj.dict().items()}
+    if isinstance(obj, dict):
+        return {k: to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [to_serializable(i) for i in obj]
+    return obj
 
 def record_attendance(db: Session, contest_id: str, user_id: str, status: models.AttendanceStatus, commit=True):
     """
@@ -132,21 +146,21 @@ def save_contest_data_snapshot(db: Session, contest_id: str, attendance: list, r
     """
     Save or update the contest data snapshot for a contest.
     """
-    from app.models import ContestDataSnapshot
-    import datetime
-    import json
+    attendance_serializable = [to_serializable(a) for a in attendance]
+    ranking_data_serializable = [to_serializable(r) for r in ranking_data]
+
     existing = db.query(ContestDataSnapshot).filter(ContestDataSnapshot.contest_id == contest_id).first()
     if existing:
         print(f"[SNAPSHOT] Updating existing snapshot for contest_id={contest_id}")
-        existing.attendance_snapshot = attendance
-        existing.ranking_data_snapshot = ranking_data
+        existing.attendance_snapshot = attendance_serializable
+        existing.ranking_data_snapshot = ranking_data_serializable
         existing.created_at = datetime.datetime.utcnow()
     else:
         print(f"[SNAPSHOT] Creating new snapshot for contest_id={contest_id}")
         snapshot = ContestDataSnapshot(
             contest_id=contest_id,
-            attendance_snapshot=attendance,
-            ranking_data_snapshot=ranking_data
+            attendance_snapshot=attendance_serializable,
+            ranking_data_snapshot=ranking_data_serializable
         )
         db.add(snapshot)
     db.commit()

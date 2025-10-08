@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app import crud, schemas
 from app.crud import users, ratings
 from app.schemas import rating_schemas 
 from app.dependencies.auth import get_current_user
