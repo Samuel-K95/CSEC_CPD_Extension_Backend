@@ -11,6 +11,10 @@ class AttendanceCreate(AttendanceBase):
     contest_id : str
     status: AttendanceStatus
 
+class UpdateAttendanceRequest(BaseModel):
+    attendance: List[AttendanceCreate]
+    ranking_data: List[dict]
+
 class AttendanceRead(AttendanceBase):
     id: str
     user_id: str

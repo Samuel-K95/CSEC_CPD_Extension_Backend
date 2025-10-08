@@ -1,3 +1,5 @@
+# Contest Data Snapshot for Rollback/Replay
+from sqlalchemy import JSON
 import enum
 import datetime
 import uuid
@@ -86,9 +88,18 @@ class Contest(Base):
     rating_history = relationship("RatingHistory", back_populates="contest", cascade="all, delete-orphan")
 
 
+class ContestDataSnapshot(Base):
+    __tablename__ = "contest_data_snapshots"
 
+    id = Column(Integer, primary_key=True, index=True)
+    contest_id = Column(String, ForeignKey("contests.id"), nullable=False, index=True)
+    attendance_snapshot = Column(JSON, nullable=False)
+    ranking_data_snapshot = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    contest = relationship("Contest")
+    
 # Attendance
-
 class AttendanceStatus(enum.Enum):
     PRESENT = "Present"
     EXCUSED = "Excused"
