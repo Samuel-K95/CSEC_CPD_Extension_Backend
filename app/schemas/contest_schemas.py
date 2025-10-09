@@ -13,6 +13,9 @@ class ContestBase(BaseModel):
 class ContestCreate(ContestBase):
     preparer_ids: Optional[List[str]] = []
 
+class ContestUpdatePreparers(BaseModel):
+    preparers: List[str]
+
 class ContestRead(ContestBase):
     id: str
     date: datetime

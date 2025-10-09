@@ -39,21 +39,6 @@ def assign_preparers(
     # Return as Pydantic model
     return contest_schemas.ContestRead.from_orm(updated_contest)
 
-@router.delete("/{contest_id}/preparers/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_preparer(
-    contest_id: str,
-    user_id: str,
-    db: Session = Depends(get_db),
-    current_admin = Depends(require_admin)
-):
-    """
-    Admin-only: Revoke a user's preparer access for a specific contest.
-    """
-    updated_contest = contests.remove_preparers_from_contest(db, contest_id, [user_id])
-    if not updated_contest:
-        raise HTTPException(status_code=404, detail="Preparer not found for this contest")
-    # Return as Pydantic model (or a message if you prefer, but keep consistent with response_model)
-    return contest_schemas.ContestRead.from_orm(updated_contest)
 
 @router.get("/my", response_model=list[contest_schemas.ContestRead])
 def list_my_contests(db: Session = Depends(get_db), current_user = Depends(get_current_user)):

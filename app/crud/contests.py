@@ -86,3 +86,36 @@ def get_user_contests(db: Session, user) -> list[models.Contest]:
             .filter(Attendance.user_id == str(user.id))
             .all()
         )
+    
+
+def get_contests_by_division(db: Session, division: str) -> list[models.Contest]:
+    """
+    Return all contests for a given division (e.g., 'Div1' or 'Div2').
+    """
+    return db.query(models.Contest).filter(models.Contest.division == division).all()
+
+def update_contest_preparers(db: Session, contest_id: str, preparers: List[str]) -> models.Contest:
+    """
+    Update the preparers for a specific contest.
+    """
+    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+    if not contest:
+        raise ValueError("Contest not found")
+
+    # Remove all existing preparers
+    stmt = delete(models.contest_preparer_table).where(
+        models.contest_preparer_table.c.contest_id == contest_id
+    )
+    db.execute(stmt)
+
+    # Add new preparers
+    for user_id in preparers:
+        db.execute(models.contest_preparer_table.insert().values(
+            contest_id = contest.id,
+            user_id = user_id,
+            can_take_attendance = True
+        ))
+
+    db.commit()
+    db.refresh(contest)
+    return contest
