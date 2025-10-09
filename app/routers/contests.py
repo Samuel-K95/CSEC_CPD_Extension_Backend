@@ -39,8 +39,6 @@ def assign_preparers(
     # Return as Pydantic model
     return contest_schemas.ContestRead.from_orm(updated_contest)
 
-
-
 @router.delete("/{contest_id}/preparers/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_preparer(
     contest_id: str,

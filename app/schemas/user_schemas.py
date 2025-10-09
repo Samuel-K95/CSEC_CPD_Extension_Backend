@@ -62,8 +62,10 @@ class TokenData(BaseModel):
     username: str | None = None
 
 
-class ChangeStatusRequest(BaseModel):
+class ChangeStatusandRole(BaseModel):
     status: str
+    role: str
+
 
 
 

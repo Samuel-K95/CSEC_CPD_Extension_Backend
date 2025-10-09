@@ -8,20 +8,9 @@ from ..schemas import user_schemas
 from ..crud import users
 from ..db import get_db
 from ..services.codeforces import verify_handle
-from ..security import verify_password
 import re
 
 router = APIRouter(prefix="/api/users", tags=["users"])
-
-@router.patch("/{handle}", response_model=user_schemas.UserRead)
-def change_user_status(handle: str, body: user_schemas.ChangeStatusRequest, db: Session = Depends(get_db)):
-    user = users.get_user_by_handle(db, handle)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    updated_user = users.change_status(db, handle, body.status)
-
-    return updated_user
 
 @router.get("/profile", response_model=user_schemas.UserProfile)
 def get_me(

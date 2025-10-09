@@ -25,11 +25,12 @@ def create_user(db:Session, user_in: UserCreate):
     db.refresh(user)
     return user
 
-def change_status(db: Session, handle: str, status: UserStatus):
+def change_status_and_role(db: Session, handle: str, status: UserStatus, role: str):
     user = get_user_by_handle(db, handle)
     user.status = status
+    user.role = role
     db.commit()
-    db.refresh()
+    db.refresh(user)
     return user
 
 
