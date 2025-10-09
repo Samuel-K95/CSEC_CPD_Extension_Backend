@@ -125,7 +125,7 @@ class Codeforces:
 
         # 3.5 Compute raw delta
         for a in contestants:   
-            a['delta'] = (a['rating'] - a['needRating']) / 2
+            a['delta'] = (a['needRating'] - a['rating']) / 2
         print(f"[CF] Contestants with raw delta: {contestants}", flush=True)
 
         # 3.6 Normalize deltas

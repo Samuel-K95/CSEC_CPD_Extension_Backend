@@ -145,3 +145,16 @@ def update_attendance(
         "ranking_data": body.ranking_data,
         "rating_summary": rating_summary
     }
+
+@router.get("/{contest_id}/{user_id}", response_model=bool)
+def get_attendance_for_user(contest_id: str, user_id: str, db: Session = Depends(get_db)):
+    """
+    Check if a record with contest_id and user_id is found in the attendance table
+    """
+    record = db.query(models.Attendance).filter(
+        models.Attendance.contest_id == contest_id,
+        models.Attendance.user_id == user_id
+    ).first()
+
+
+    return True if record else False
