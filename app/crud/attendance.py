@@ -6,6 +6,11 @@ from app.schemas import  user_schemas
 from app.models import ContestDataSnapshot
 import datetime
 import enum
+from app.crud.contests import get_contest
+from app.services.ratings import Codeforces
+from app.models import AttendanceStatus
+from app.models import ContestDataSnapshot
+from app.models import Contest, AttendanceStatus
 
 def to_serializable(obj):
     if isinstance(obj, enum.Enum):
@@ -170,7 +175,6 @@ def fetch_contest_data_snapshot(db: Session, contest_id: str):
     Fetch the contest data snapshot for a contest.
     Returns (attendance, ranking_data) or (None, None) if not found.
     """
-    from app.models import ContestDataSnapshot
     snap = db.query(ContestDataSnapshot).filter(ContestDataSnapshot.contest_id == contest_id).first()
     if snap:
         print(f"[SNAPSHOT] Fetched snapshot for contest_id={contest_id}")
@@ -183,7 +187,6 @@ def get_subsequent_contests(db: Session, contest_id: str):
     """
     Return all contests in the same division with date > given contest, ordered by date.
     """
-    from app.models import Contest
     base_contest = db.query(Contest).filter(Contest.id == contest_id).first()
     if not base_contest:
         print(f"[REPLAY] Contest {contest_id} not found.")
@@ -210,12 +213,13 @@ def replay_contest(db: Session, contest_id: str):
     if attendance is None or ranking_data is None:
         print(f"[REPLAY] No snapshot for contest {contest_id}, skipping replay.")
         return
-    from app.crud.contests import get_contest
-    from app.services.ratings import Codeforces
+
     contest = get_contest(db=db, contest_id=contest_id)
     # Re-apply attendance
     for record in attendance:
-        record_attendance(db, contest_id, record['user_id'], record['status'], commit=False)
+        # Convert string status from snapshot back to Enum member
+        status_enum = AttendanceStatus(record['status'])
+        record_attendance(db, contest_id, record['user_id'], status_enum, commit=False)
     db.commit()
     # Re-apply ratings
     codeforces = Codeforces(db=db, div=contest.division, ranking=ranking_data, attendance=attendance)

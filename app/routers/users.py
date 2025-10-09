@@ -56,6 +56,7 @@ def get_users_by_division(division: str, db: Session = Depends(get_db), current_
     """
     print("getting all users in division", division)
     users_list = users.get_users_by_division(db, division)
+    users_list = [user for user in users_list if user.status == "Active"]
     return [user_schemas.UserRead.from_orm(user) for user in users_list]
 
 @router.put("/profile/{handle}", response_model=user_schemas.UserRead)

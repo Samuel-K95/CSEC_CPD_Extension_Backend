@@ -25,9 +25,9 @@ def get_users_by_division(
 
 
 @router.patch("/users/{handle}/status", response_model=user_schemas.UserRead)
-def change_user_status_admin(
+def update_user_admin(
     handle: str,
-    body: user_schemas.ChangeStatusandRole,
+    body: user_schemas.ChangeStatusRoleandDivision,
     db: Session = Depends(get_db),
     current_user = Depends(require_admin)
 ):
@@ -38,7 +38,7 @@ def change_user_status_admin(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    updated_user = crud_users.change_status_and_role(db, handle, body.status, body.role)
+    updated_user = crud_users.change_status_role_and_division(db, handle, body.status, body.role, body.division)
 
     return updated_user
 

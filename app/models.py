@@ -20,7 +20,7 @@ class Division(str, enum.Enum):
 class UserStatus(str, enum.Enum):
     Active = "Active"
     Terminated = "Terminated"
-    NolongerActive = "No longer Active"
+    NoLongerActive = "No Longer Active"
 
 
 class UserRole(str, enum.Enum):

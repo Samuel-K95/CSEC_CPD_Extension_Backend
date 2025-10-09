@@ -18,41 +18,49 @@ class Codeforces:
         self.rating_updates = {}
     
     def clean_handle(self, handle):
-        if handle.endswith("#"):
-            return handle[:-1]
-        return handle
+        return handle.rstrip('#') if handle else handle
     
     def get_user_attendance(self, user_id):
         for record in self.attendance:
-            if record.user_id == str(user_id):
-                return record.status
+            if isinstance(record, dict):
+                # Handle dictionary from snapshot
+                if record.get('user_id') == str(user_id):
+                    return record.get('status')
+            else:
+                # Handle Pydantic model from live request
+                if record.user_id == str(user_id):
+                    return record.status
         return attendance_schemas.AttendanceStatus.ABSENT
 
     def build_participant(self):
         division_users = get_users_by_division(db=self.db, division=self.div)
-        handle_to_user = {user.codeforces_handle: user for user in division_users}
+
+        # filter the active ones only
+        division_users = [user for user in division_users if user.status == UserStatus.Active]
+        
+        ranking_by_handle = {self.clean_handle(entry.get("handle")): entry for entry in self.ranking}
+
         participants = []
         
-        for rank, entry in enumerate(self.ranking):
-            handle = entry.get("handle")
-            handle = self.clean_handle(handle=handle)
-            user = handle_to_user.get(handle)
-            if not user:
-                continue  
-
+        for user in division_users:
+            attendance_status = self.get_user_attendance(user.id)
+            
+            cleaned_handle = self.clean_handle(user.codeforces_handle)
+            ranking_entry = ranking_by_handle.get(cleaned_handle)
+            
             participant_info = {
                 "user_id": user.id,
-                "codeforces_handle": handle,
+                "codeforces_handle": cleaned_handle,
                 "status": user.status,
                 "rating": user.rating,
-                "attendance_status": self.get_user_attendance(user.id),
+                "attendance_status": attendance_status,
                 "division": user.division,
-                "rank": rank,
-                "problems_solved": entry.get("score", 0),
-                "penalty": entry.get("penalty", 0)
+                # Add ranking data only if they were present and have an entry
+                "rank": int(ranking_entry['rank']) if ranking_entry else -1,
+                "problems_solved": ranking_entry.get("score", 0) if ranking_entry else 0,
+                "penalty": ranking_entry.get("penalty", 0) if ranking_entry else 0
             }
             participants.append(participant_info)
-    
 
         return participants
 
@@ -99,7 +107,7 @@ class Codeforces:
         def get_seed(contestants, rating):
             seed = 1.0
             for b in contestants:
-                seed += 1 / (1 + (10 ** ((b['rating'] - rating) / 400)))
+                seed += 1 / (1 + (10 ** ((rating - b['rating']) / 400)))
             return seed
 
         for a in contestants:
@@ -113,9 +121,9 @@ class Codeforces:
                 mid = (low + high) / 2
                 seed = get_seed(contestants, mid)
                 if seed < midRank:
-                    low = mid
-                else:
                     high = mid
+                else:
+                    low = mid
             return (low + high) / 2
 
         for a in contestants:
@@ -161,15 +169,19 @@ class Codeforces:
         return contestants 
     
     def aggregate_rating(self, penality):
+        print("in aggregate rating")
+        print("absent", self.ABSENT)
+        print("excused", self.EXCUSED)
+        print("present", self.PRESENT)
         for user in self.ABSENT:
-            self.rating_updates[user['user_id']] = - penality
+            self.rating_updates[user['user_id']] = -penality
         for user in self.EXCUSED:
             self.rating_updates[user['user_id']] = 0
-        
         present_updates = self.apply_codeforces_rating()
         for update in present_updates:
             self.rating_updates[update['user_id']] = int(round(update['delta']))
         
+        print("rating updates", self.rating_updates)
         return self.rating_updates
     
     def calculate_final_ratings(self, penality):

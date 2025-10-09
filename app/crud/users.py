@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from ..models import User, UserStatus
+from ..models import Division, User, UserStatus
 from ..schemas.user_schemas import UserCreate
 from ..security import hash_password
 from app import models
@@ -25,10 +25,11 @@ def create_user(db:Session, user_in: UserCreate):
     db.refresh(user)
     return user
 
-def change_status_and_role(db: Session, handle: str, status: UserStatus, role: str):
+def change_status_role_and_division(db: Session, handle: str, status: UserStatus, role: str, division: Division):
     user = get_user_by_handle(db, handle)
     user.status = status
     user.role = role
+    user.division = division    
     db.commit()
     db.refresh(user)
     return user
