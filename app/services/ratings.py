@@ -1,4 +1,4 @@
-from app.models import User, Contest, Rating, RatingHistory, Division, UserStatus
+from app.models import  Division, UserStatus
 from app.crud.users import get_users_by_division 
 from sqlalchemy.orm import Session
 from app.schemas import attendance_schemas

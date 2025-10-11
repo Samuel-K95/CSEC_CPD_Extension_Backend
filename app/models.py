@@ -31,7 +31,7 @@ contest_preparer_table = Table(
     "contest_preparer_link",
     Base.metadata,
     Column("contest_id", String, ForeignKey("contests.id"), primary_key=True),
-    Column("user_id", String, ForeignKey("users.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("can_take_attendance", Boolean, default=True)
 )
 
@@ -49,8 +49,8 @@ class User(Base):
     rating = Column(Integer, default=1400, nullable=False)
     hashed_password = Column(String, nullable=False)
 
+    ratings = relationship("Rating", back_populates="user", cascade="all, delete-orphan")
     assigned_contests = relationship("Contest" ,secondary=contest_preparer_table, back_populates="preparers")
-    ratings = relationship("Rating",back_populates="user")
     rating_history = relationship("RatingHistory", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -60,7 +60,7 @@ class RatingHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    contest_id = Column(Integer, ForeignKey("contests.id"), nullable=False)
+    contest_id = Column(String, ForeignKey("contests.id"), nullable=False)
 
     old_rating = Column(Integer, nullable=False)
     new_rating = Column(Integer, nullable=False)
@@ -109,7 +109,7 @@ class Attendance(Base):
     __tablename__ = "attendance"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     contest_id = Column(String, ForeignKey("contests.id"), nullable=False)
     status = Column(Enum(AttendanceStatus), nullable=False, default=AttendanceStatus.PRESENT)
 
@@ -121,7 +121,7 @@ class Rating(Base):
     __tablename__ = "ratings"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     current_rating = Column(Integer, default=1400, nullable=False)
     last_updated = Column(DateTime, default=datetime.datetime.utcnow)
 
