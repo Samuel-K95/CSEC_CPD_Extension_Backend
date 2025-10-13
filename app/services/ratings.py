@@ -1,25 +1,25 @@
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import  Division, UserStatus
-from app.crud.users import get_users_by_division 
-from sqlalchemy.orm import Session
+from app.crud.users import get_users_by_division
 from app.schemas import attendance_schemas
 import math
 
 
 class Codeforces:
-    def __init__(self, db: Session,  ranking: dict, div: Division, attendance: attendance_schemas.AttendanceCreate):
+    def __init__(self, db: AsyncSession,  ranking: dict, div: Division, attendance: attendance_schemas.AttendanceCreate):
         self.div = div
         self.ranking = ranking
         self.db = db
-        self.attendance=attendance
-        self.participants = self.build_participant()
+        self.attendance = attendance
+        self.participants = []  
         self.PRESENT = []
         self.ABSENT = []
         self.EXCUSED = []
         self.rating_updates = {}
-    
+
     def clean_handle(self, handle):
         return handle.rstrip('#') if handle else handle
-    
+
     def get_user_attendance(self, user_id):
         for record in self.attendance:
             if isinstance(record, dict):
@@ -32,22 +32,23 @@ class Codeforces:
                     return record.status
         return attendance_schemas.AttendanceStatus.ABSENT
 
-    def build_participant(self):
-        division_users = get_users_by_division(db=self.db, division=self.div)
+    async def build_participant(self):
+        # Asynchronously fetch users
+        division_users = await get_users_by_division(db=self.db, division=self.div)
 
         # filter the active ones only
         division_users = [user for user in division_users if user.status == UserStatus.Active]
-        
+
         ranking_by_handle = {self.clean_handle(entry.get("handle")): entry for entry in self.ranking}
 
         participants = []
-        
+
         for user in division_users:
             attendance_status = self.get_user_attendance(user.id)
-            
+
             cleaned_handle = self.clean_handle(user.codeforces_handle)
             ranking_entry = ranking_by_handle.get(cleaned_handle)
-            
+
             participant_info = {
                 "user_id": user.id,
                 "codeforces_handle": cleaned_handle,
@@ -64,15 +65,15 @@ class Codeforces:
 
         return participants
 
-    def partition_users(self):
+    async def partition_users(self):
         active_users = [u for u in self.participants if u['status'] == UserStatus.Active]
 
         self.PRESENT = [u for u in active_users if u['attendance_status'] == attendance_schemas.AttendanceStatus.PRESENT]
         self.ABSENT = [u for u in active_users if u['attendance_status'] == attendance_schemas.AttendanceStatus.ABSENT]
         self.EXCUSED = [u for u in active_users if u['attendance_status'] == attendance_schemas.AttendanceStatus.EXCUSED]
 
-    
-    def apply_codeforces_rating(self):
+
+    async def apply_codeforces_rating(self):
         print("[CF] Applying Codeforces rating update...", flush=True)
         # 3.1 Build contestant structures
         contestants = []
@@ -132,7 +133,7 @@ class Codeforces:
         print(f"[CF] Contestants with needRating: {contestants}", flush=True)
 
         # 3.5 Compute raw delta
-        for a in contestants:   
+        for a in contestants:
             a['delta'] = (a['needRating'] - a['rating']) / 2
         print(f"[CF] Contestants with raw delta: {contestants}", flush=True)
 
@@ -166,9 +167,9 @@ class Codeforces:
                         print(f"[CF][WARN] Invariant violated: {contestants[i]['user_id']} < {contestants[j]['user_id']} but delta <", flush=True)
 
         print(f"[CF] Final contestants with deltas: {contestants}", flush=True)
-        return contestants 
-    
-    def aggregate_rating(self, penality):
+        return contestants
+
+    async def aggregate_rating(self, penality):
         print("in aggregate rating")
         print("absent", self.ABSENT)
         print("excused", self.EXCUSED)
@@ -177,20 +178,15 @@ class Codeforces:
             self.rating_updates[user['user_id']] = -penality
         for user in self.EXCUSED:
             self.rating_updates[user['user_id']] = 0
-        present_updates = self.apply_codeforces_rating()
+        present_updates = await self.apply_codeforces_rating()
         for update in present_updates:
             self.rating_updates[update['user_id']] = int(round(update['delta']))
-        
+
         print("rating updates", self.rating_updates)
         return self.rating_updates
-    
-    def calculate_final_ratings(self, penality):
-        self.partition_users()
-        return self.aggregate_rating(penality)
 
-
-
-
-
-
-
+    async def calculate_final_ratings(self, penality):
+        # Asynchronously build the participants list first
+        self.participants = await self.build_participant()
+        await self.partition_users()
+        return await self.aggregate_rating(penality)

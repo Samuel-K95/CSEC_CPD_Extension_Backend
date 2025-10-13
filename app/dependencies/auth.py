@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.db import get_db
 from sqlalchemy import select
@@ -14,7 +14,7 @@ from app.schemas import user_schemas
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> models.User:
     """
     Decode JWT token and fetch current user from DB.
     """
@@ -34,12 +34,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credential_exception
 
-    user = db.query(models.User).filter(models.User.codeforces_handle == token_data.username).first()
+    result = await db.execute(select(models.User).filter(models.User.codeforces_handle == token_data.username))
+    user = result.scalars().first()
     if user is None:
         raise credential_exception
     return user
 
-def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
+async def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
     """
     Dependency to ensure the current user is an admin.
     Raises 403 if current user is not admin
@@ -52,10 +53,10 @@ def require_admin(current_user: models.User = Depends(get_current_user)) -> mode
     return current_user
 
 
-def require_preparer(
+async def require_preparer(
         contest_id: str,
-        current_user: models.User,
-        db: Session = Depends(get_db)
+        current_user: models.User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)
     ) -> models.User:
     """
     Checks if the current user is a preparer for the given contest.
@@ -72,9 +73,10 @@ def require_preparer(
         models.contest_preparer_table.c.can_take_attendance == True
     )
 
-    result = db.execute(stmt).first()
+    result = await db.execute(stmt)
+    auth_check = result.first()
 
-    if not result:
+    if not auth_check:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is not authorized to take attendance for this contest",

@@ -1,13 +1,13 @@
 fastapi==0.95.2
 uvicorn[standard]==0.21.1
-SQLAlchemy==2.0.21
+SQLAlchemy[asyncio]==2.0.21
 psycopg2-binary==2.9.6
+asyncpg
 pydantic==1.10.11
 python-dotenv==1.0.0
-requests==2.31.0
+httpx==0.24.1
 pytest==7.4.0
 passlib[bcrypt]
 pyjwt
 python-multipart
 pydantic[email]
-psycopg2-binary

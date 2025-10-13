@@ -1,16 +1,18 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.schemas import contest_schemas
 from typing import List, Optional
-from sqlalchemy import delete
-import datetime
+from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
+import datetime, asyncio
 
 
-def create_contest(db: Session, contest_in: contest_schemas.ContestCreate) -> models.Contest:
-    existing = db.query(models.Contest).filter(models.Contest.link == contest_in.link).first()
+async def create_contest(db: AsyncSession, contest_in: contest_schemas.ContestCreate) -> models.Contest:
+    result = await db.execute(select(models.Contest).filter(models.Contest.link == contest_in.link))
+    existing = result.scalars().first()
     if existing:
         raise ValueError(f"Contest with link '{contest_in.link}' already exists.")
-    contest_date = datetime.datetime.utcnow()
+    contest_date = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     contest = models.Contest(
         name=contest_in.name,
         link=contest_in.link,
@@ -18,26 +20,34 @@ def create_contest(db: Session, contest_in: contest_schemas.ContestCreate) -> mo
         date=contest_date
     )
     db.add(contest)
-    db.commit()
-    db.refresh(contest)
+    await db.commit()
+    await db.refresh(contest)
     
 
     for user_id in contest_in.preparer_ids or []:
-        db.execute(models.contest_preparer_table.insert().values(
+        await db.execute(models.contest_preparer_table.insert().values(
             contest_id = contest.id,
             user_id = user_id,
             can_take_attendance = True
         ))
 
-    db.commit()
+    await db.commit()
     return contest
 
-def get_contest(db: Session, contest_id: str) -> Optional[models.Contest]:
-    return db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+async def get_contest(db: AsyncSession, contest_id: str) -> Optional[models.Contest]:
+    result = await db.execute(
+        select(models.Contest)
+        .options(selectinload(models.Contest.preparers))
+        .filter(models.Contest.id == contest_id)
+    )
+    return result.scalars().first()
 
 
-def add_preparers_to_contest(db: Session, contest_id: str, preparer_ids: List[str]) -> models.Contest:
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+async def add_preparers_to_contest(db: AsyncSession, contest_id: str, preparer_ids: List[str]) -> models.Contest:
+    result = await db.execute(
+        select(models.Contest).options(selectinload(models.Contest.preparers)).filter(models.Contest.id == contest_id)
+    )
+    contest = result.scalars().first()
     if not contest:
         raise ValueError("Contest not found")
 
@@ -45,21 +55,22 @@ def add_preparers_to_contest(db: Session, contest_id: str, preparer_ids: List[st
 
     for user_id in preparer_ids:
         if user_id not in existing_ids:
-            db.execute(models.contest_preparer_table.insert().values(
+            await db.execute(models.contest_preparer_table.insert().values(
                 contest_id = contest.id,
                 user_id = user_id,
                 can_take_attendance = True
             ))
 
-    db.commit()
-    db.refresh(contest)
+    await db.commit()
+    await db.refresh(contest)
     return contest
 
-def remove_preparers_from_contest(db: Session, contest_id: str, preparer_ids: List[str]) -> models.Contest:
+async def remove_preparers_from_contest(db: AsyncSession, contest_id: str, preparer_ids: List[str]) -> models.Contest:
     """
     Remove a preparer from a contest.
     """
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+    result = await db.execute(select(models.Contest).filter(models.Contest.id == contest_id))
+    contest = result.scalars().first()
     if not contest:
         raise ValueError("Contest not found")
 
@@ -67,38 +78,53 @@ def remove_preparers_from_contest(db: Session, contest_id: str, preparer_ids: Li
         models.contest_preparer_table.c.contest_id == contest_id,
         models.contest_preparer_table.c.user_id.in_(preparer_ids)
     )
-    db.execute(stmt)
-    db.commit()
-    db.refresh(contest)
+    await db.execute(stmt)
+    await db.commit()
+    await db.refresh(contest)
     return contest
 
-def get_user_contests(db: Session, user) -> list[models.Contest]:
+async def get_user_contests(db: AsyncSession, user) -> list[models.Contest]:
     """
     Return all contests the user has participated in (attendance), or all contests if admin.
     """
     from app.models import UserRole, Contest, Attendance
     if user.role == UserRole.Admin:
-        return db.query(Contest).all()
+        result = await db.execute(
+            select(Contest)
+            .options(selectinload(Contest.preparers))
+        )
+        return result.scalars().all()
     else:
-        return (
-            db.query(Contest)
+        result = await db.execute(
+            select(Contest)
+            .options(selectinload(Contest.preparers))
             .join(Attendance, Contest.id == Attendance.contest_id)
             .filter(Attendance.user_id == str(user.id))
-            .all()
         )
+        return result.scalars().all()
     
 
-def get_contests_by_division(db: Session, division: str) -> list[models.Contest]:
+async def get_contests_by_division(db: AsyncSession, division: str) -> list[models.Contest]:
     """
     Return all contests for a given division (e.g., 'Div1' or 'Div2').
     """
-    return db.query(models.Contest).filter(models.Contest.division == division).all()
+    result = await db.execute(
+        select(models.Contest)
+        .options(selectinload(models.Contest.preparers))
+        .filter(models.Contest.division == division)
+    )
+    return result.scalars().all()
 
-def update_contest_preparers(db: Session, contest_id: str, preparers: List[str]) -> models.Contest:
+async def update_contest_preparers(db: AsyncSession, contest_id: str, preparers: List[str]) -> models.Contest:
     """
     Update the preparers for a specific contest.
     """
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+    result = await db.execute(
+        select(models.Contest)
+        .options(selectinload(models.Contest.preparers))
+        .filter(models.Contest.id == contest_id)
+    )
+    contest = result.scalars().first()
     if not contest:
         raise ValueError("Contest not found")
 
@@ -106,16 +132,16 @@ def update_contest_preparers(db: Session, contest_id: str, preparers: List[str])
     stmt = delete(models.contest_preparer_table).where(
         models.contest_preparer_table.c.contest_id == contest_id
     )
-    db.execute(stmt)
+    await db.execute(stmt)
 
     # Add new preparers
     for user_id in preparers:
-        db.execute(models.contest_preparer_table.insert().values(
+        await db.execute(models.contest_preparer_table.insert().values(
             contest_id = contest.id,
             user_id = user_id,
             can_take_attendance = True
         ))
 
-    db.commit()
-    db.refresh(contest)
+    await db.commit()
+    await db.refresh(contest)
     return contest

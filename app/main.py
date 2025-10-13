@@ -5,7 +5,6 @@ from .db import Base, engine
 from .routers import users
 from fastapi.middleware.cors import CORSMiddleware
 
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CSEC Contest Rating - Backend")
 
@@ -29,5 +28,5 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 
 @app.get("/")
-def read_root():
+async def read_root():
     return {"message": "Welcome to CSEC Contest Rating Backend!"}

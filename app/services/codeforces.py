@@ -1,17 +1,18 @@
 import requests
-import re
+import re, httpx, asyncio
 
 
 BASE_URL = "https://codeforces.com/api/"
 
-def verify_handle(handle: str) -> bool:
+async def verify_handle(handle: str) -> bool:
     """Check if a codeforces handle exists."""
     print("validating user", handle)
     try:
-        r = requests.get(f"{BASE_URL}user.info", params={"handles": handle}, timeout=5)
-        print("response json:", r.json())
-        data = r.json()
-        return data.get("status") == "OK"
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{BASE_URL}user.info", params={"handles": handle}, timeout=5)
+            print("response json:", r.json())
+            data = r.json()
+            return data.get("status") == "OK"
     except Exception as e:
         print(f"Error verifying handle: {e}")
         return False
@@ -27,7 +28,7 @@ def extract_contest_id(contest_link: str) -> str:
     raise ValueError("Invalid Codeforces contest link")
 
 
-def get_codeforces_standings_handles(contest_link: str, as_manager: bool = False, from_row: int = 1, count: int = 0, show_unofficial: bool = True) -> dict:
+async def get_codeforces_standings_handles(contest_link: str, as_manager: bool = False, from_row: int = 1, count: int = 0, show_unofficial: bool = True) -> dict:
     """
     Fetches contest standings from Codeforces API and returns a dictionary
     mapping user handles to their rank.
@@ -44,9 +45,10 @@ def get_codeforces_standings_handles(contest_link: str, as_manager: bool = False
         params["count"] = count
 
     try:
-        r = requests.get(f"{BASE_URL}contest.standings", params=params, timeout=10)
-        r.raise_for_status()  # Raise an exception for bad status codes
-        data = r.json()
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{BASE_URL}contest.standings", params=params, timeout=10)
+            r.raise_for_status()  # Raise an exception for bad status codes
+            data = r.json()
 
         print("response json:", data)
         if data.get("status") != "OK":
@@ -63,7 +65,7 @@ def get_codeforces_standings_handles(contest_link: str, as_manager: bool = False
         
         return standings
 
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         print(f"Error fetching standings: {e}")
         return {}
     except (KeyError, IndexError) as e:

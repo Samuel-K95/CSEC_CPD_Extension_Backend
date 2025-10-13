@@ -44,7 +44,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     division = Column(Enum(Division), nullable=False)
     status = Column(Enum(UserStatus), default=UserStatus.Active, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
     role = Column(Enum(UserRole), default=UserRole.Participant, nullable=False)
     rating = Column(Integer, default=1400, nullable=False)
     hashed_password = Column(String, nullable=False)
@@ -64,7 +64,7 @@ class RatingHistory(Base):
 
     old_rating = Column(Integer, nullable=False)
     new_rating = Column(Integer, nullable=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
 
     user = relationship("User", back_populates="rating_history")
     contest = relationship("Contest", back_populates="rating_history")
@@ -75,7 +75,6 @@ class RatingHistory(Base):
 
 class Contest(Base):
     __tablename__ = "contests"
-
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=True)
@@ -95,7 +94,7 @@ class ContestDataSnapshot(Base):
     contest_id = Column(String, ForeignKey("contests.id"), nullable=False, index=True)
     attendance_snapshot = Column(JSON, nullable=False)
     ranking_data_snapshot = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
 
     contest = relationship("Contest")
     
@@ -123,7 +122,7 @@ class Rating(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     current_rating = Column(Integer, default=1400, nullable=False)
-    last_updated = Column(DateTime, default=datetime.datetime.utcnow)
+    last_updated = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
 
     user = relationship("User", back_populates="ratings")
 
@@ -135,7 +134,7 @@ class RefreshToken(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     token = Column(String, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
     is_revoked = Column(Boolean, default=False)
 
     user = relationship("User")

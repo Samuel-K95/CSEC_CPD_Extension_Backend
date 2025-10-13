@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.crud import users, ratings
 from app.schemas import rating_schemas 
@@ -8,8 +9,8 @@ from app.dependencies.auth import get_current_user
 router = APIRouter(prefix="/rating", tags=["Rating"])
 
 @router.get("/", response_model=list[rating_schemas.LeaderboardEntry])
-def get_leaderboard(
-    db: Session = Depends(get_db),
+async def get_leaderboard(
+    db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """
@@ -21,7 +22,7 @@ def get_leaderboard(
         division = None
     else:
         division = getattr(current_user, "division", None)
-    results = ratings.get_leaderboard(db, division)
+    results = await ratings.get_leaderboard(db, division)
 
     leaderboard = []
     rank = 1
