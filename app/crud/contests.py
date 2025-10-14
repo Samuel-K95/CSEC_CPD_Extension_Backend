@@ -22,12 +22,18 @@ async def create_contest(db: AsyncSession, contest_in: contest_schemas.ContestCr
     db.add(contest)
     await db.commit()
     await db.refresh(contest)
-    
+    # Eagerly load preparers for the newly created contest
+    contest_with_preparers = await db.execute(
+        select(models.Contest)
+        .options(selectinload(models.Contest.preparers))
+        .filter(models.Contest.id == contest.id)
+    )
+    contest = contest_with_preparers.scalars().first()
 
     for user_id in contest_in.preparer_ids or []:
         await db.execute(models.contest_preparer_table.insert().values(
             contest_id = contest.id,
-            user_id = user_id,
+            user_id = int(user_id),
             can_take_attendance = True
         ))
 
@@ -57,7 +63,7 @@ async def add_preparers_to_contest(db: AsyncSession, contest_id: str, preparer_i
         if user_id not in existing_ids:
             await db.execute(models.contest_preparer_table.insert().values(
                 contest_id = contest.id,
-                user_id = user_id,
+                user_id = int(user_id),
                 can_take_attendance = True
             ))
 
@@ -76,7 +82,7 @@ async def remove_preparers_from_contest(db: AsyncSession, contest_id: str, prepa
 
     stmt = delete(models.contest_preparer_table).where(
         models.contest_preparer_table.c.contest_id == contest_id,
-        models.contest_preparer_table.c.user_id.in_(preparer_ids)
+        models.contest_preparer_table.c.user_id.in_([int(user_id) for user_id in preparer_ids])
     )
     await db.execute(stmt)
     await db.commit()
@@ -138,7 +144,7 @@ async def update_contest_preparers(db: AsyncSession, contest_id: str, preparers:
     for user_id in preparers:
         await db.execute(models.contest_preparer_table.insert().values(
             contest_id = contest.id,
-            user_id = user_id,
+            user_id = int(user_id),
             can_take_attendance = True
         ))
 

@@ -40,7 +40,7 @@ async def change_status_role_and_division(db: AsyncSession, handle: str, status:
     return user
 
 
-async def get_user_with_rating(db: AsyncSession, user_id: str):
+async def get_user_with_rating(db: AsyncSession, user_id: int):
     """
     Fetch a user and their current rating.
     """
@@ -54,7 +54,7 @@ async def get_user_with_rating(db: AsyncSession, user_id: str):
     return user, rating
 
 
-async def get_user_rating_history(db: AsyncSession, user_id: str):
+async def get_user_rating_history(db: AsyncSession, user_id: int):
     """
     Fetch rating history for a user (optional).
     """
@@ -69,7 +69,7 @@ async def get_all_users(db: AsyncSession):
     result = await db.execute(select(User))
     return result.scalars().all()
 
-async def update_user(db: AsyncSession, user_id: str, updates: dict):
+async def update_user(db: AsyncSession, user_id: int, updates: dict):
     result = await db.execute(select(models.User).filter(models.User.id == user_id))
     user = result.scalars().first()
     if not user:

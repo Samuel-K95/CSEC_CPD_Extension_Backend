@@ -24,7 +24,7 @@ def to_serializable(obj):
         return [to_serializable(i) for i in obj]
     return obj
 
-async def record_attendance(db: AsyncSession, contest_id: str, user_id: str, status: models.AttendanceStatus, commit=True):
+async def record_attendance(db: AsyncSession, contest_id: str, user_id: int, status: models.AttendanceStatus, commit=True):
     """
     Insert or update attendance record for a participant.
     """
@@ -56,7 +56,7 @@ async def record_attendance(db: AsyncSession, contest_id: str, user_id: str, sta
 
 
 
-async def get_attendance_for_user(db: AsyncSession, user_id: str) -> List[models.Attendance]:
+async def get_attendance_for_user(db: AsyncSession, user_id: int) -> List[models.Attendance]:
     """
     Get all attendance records for a specific user.
     """
@@ -90,7 +90,7 @@ async def fetch_contest_attendance(db: AsyncSession, contest_id: str):
         })
     return results
 
-async def apply_rating_update(db: AsyncSession, user_id: str, delta: int, commit=True):
+async def apply_rating_update(db: AsyncSession, user_id: int, delta: int, commit=True):
     """
     Update the user's rating by adding delta. Returns the updated user object.
     """
@@ -115,7 +115,7 @@ async def record_rating_history_batch(db: AsyncSession, rating_summary: list):
     """
     for entry in rating_summary:
         history_record = models.RatingHistory(
-            user_id=entry['user_id'],
+            user_id=int(entry['user_id']),
             contest_id=entry['contest_id'],
             old_rating=entry['old_rating'],
             new_rating=entry['new_rating']
@@ -136,7 +136,7 @@ async def rollback_contest_ratings_and_attendance(db: AsyncSession, contest_id: 
     histories_result = await db.execute(select(models.RatingHistory).filter(models.RatingHistory.contest_id == contest_id))
     histories = histories_result.scalars().all()
     for history in histories:
-        user_result = await db.execute(select(models.User).filter(models.User.id == history.user_id))
+        user_result = await db.execute(select(models.User).filter(models.User.id == int(history.user_id)))
         user = user_result.scalars().first()
         if user:
             print(f"[ROLLBACK] Reverting user_id={user.id} rating from {user.rating} to {history.old_rating}")
@@ -226,14 +226,14 @@ async def replay_contest(db: AsyncSession, contest_id: str):
     for record in attendance:
         # Convert string status from snapshot back to Enum member
         status_enum = AttendanceStatus(record['status'])
-        await record_attendance(db, contest_id, record['user_id'], status_enum, commit=False)
+        await record_attendance(db, contest_id, int(record['user_id']), status_enum, commit=False)
     await db.commit()
     # Re-apply ratings
     codeforces = Codeforces(db=db, div=contest.division, ranking=ranking_data, attendance=attendance)
     rating_updates = await codeforces.calculate_final_ratings(penality=50)
     rating_summary = []
     for user_id, delta in rating_updates.items():
-        updated_user = await apply_rating_update(db, user_id, delta, commit=False)
+        updated_user = await apply_rating_update(db, int(user_id), delta, commit=False)
         if updated_user:
             rating_summary.append({
                 "user_id": user_id,

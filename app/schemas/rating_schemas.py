@@ -23,7 +23,7 @@ class LeaderboardEntry(BaseModel):
 
 
 class RatingHistoryEntry(BaseModel):
-    contest_id: int
+    contest_id: str
     old_rating: int
     new_rating: int
     timestamp: datetime

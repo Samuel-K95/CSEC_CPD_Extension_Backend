@@ -20,15 +20,15 @@ class Codeforces:
     def clean_handle(self, handle):
         return handle.rstrip('#') if handle else handle
 
-    def get_user_attendance(self, user_id):
+    def get_user_attendance(self, user_id: int):
         for record in self.attendance:
             if isinstance(record, dict):
                 # Handle dictionary from snapshot
-                if record.get('user_id') == str(user_id):
+                if int(record.get('user_id')) == user_id:
                     return record.get('status')
             else:
                 # Handle Pydantic model from live request
-                if record.user_id == str(user_id):
+                if int(record.user_id) == user_id:
                     return record.status
         return attendance_schemas.AttendanceStatus.ABSENT
 

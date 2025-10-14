@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 
-async def log_rating_change(db: AsyncSession, user_id: int, contest_id: int, old_rating: int, new_rating: int):
+async def log_rating_change(db: AsyncSession, user_id: int, contest_id: str, old_rating: int, new_rating: int):
     history_entry = models.RatingHistory(
         user_id=user_id,
         contest_id=contest_id,
@@ -66,7 +66,7 @@ async def apply_absence_penality(db: AsyncSession, user_id: int, penality: int) 
     return rating
 
 
-async def get_leaderboard(db: AsyncSession, division: Optional[models.Division] = None) -> List[models.Rating]:
+async def get_leaderboard(db: AsyncSession, division: Optional[models.Division] = None) -> List[tuple[models.User, models.Rating]]:
     """
     Get the leaderboard of users sorted by their ratings.
     Optionally filter by division.

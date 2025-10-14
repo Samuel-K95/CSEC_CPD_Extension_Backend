@@ -15,8 +15,8 @@ from sqlalchemy import select
 router = APIRouter(prefix="/api/attendance", tags=["attendance"])
 
 # Dependency wrapper for preparer access
-def preparer_dependency(contest_id: str, current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return require_preparer(contest_id, current_user, db)
+async def preparer_dependency(contest_id: str, current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await require_preparer(contest_id, current_user, db)
 
 @router.post("/{contest_id}/attendance", response_model=dict)
 async def submit_attendance(
@@ -38,7 +38,7 @@ async def submit_attendance(
 
     rating_summary = []
     codeforces = Codeforces(db=db, div=contest.division, ranking=body.ranking_data, attendance=body.attendance)
-    rating_updates = codeforces.calculate_final_ratings(penality=50) # Penality not set yet!
+    rating_updates = await codeforces.calculate_final_ratings(penality=50) # Penality not set yet!
     print("rating updates calculated", rating_updates)
     
     # Apply rating updates in all tables related to user ratings
@@ -116,7 +116,7 @@ async def update_attendance(
 
     rating_summary = []
     codeforces = Codeforces(db=db, div=contest.division, ranking=body.ranking_data, attendance=body.attendance)
-    rating_updates = codeforces.calculate_final_ratings(penality=50) # Penality not set yet!
+    rating_updates = await codeforces.calculate_final_ratings(penality=50) # Penality not set yet!
     print("rating updates calculated", rating_updates)
 
     # 4. Apply rating updates in all tables related to user ratings
@@ -149,7 +149,7 @@ async def update_attendance(
     }
 
 @router.get("/{contest_id}/{user_id}", response_model=bool)
-async def get_attendance_for_user(contest_id: str, user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_attendance_for_user(contest_id: str, user_id: int, db: AsyncSession = Depends(get_db)):
     """
     Check if a record with contest_id and user_id is found in the attendance table
     """

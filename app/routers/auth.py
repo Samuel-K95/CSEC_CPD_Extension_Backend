@@ -72,7 +72,7 @@ async def refresh_access_token(
 ):
     refresh_token = req.refresh_token
     db_token = await crud_refresh.get_refresh_token(db, token=refresh_token)
-    if not db_token or db_token.is_revoked or db_token.expires_at < datetime.datetime.now(datetime.timezone.utc):
+    if not db_token or db_token.is_revoked or db_token.expires_at < datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     try:
