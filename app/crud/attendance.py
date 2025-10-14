@@ -186,7 +186,7 @@ async def fetch_contest_data_snapshot(db: AsyncSession, contest_id: str):
         print(f"[SNAPSHOT] Fetched snapshot for contest_id={contest_id}")
         return snap.attendance_snapshot, snap.ranking_data_snapshot
     print(f"[SNAPSHOT] No snapshot found for contest_id={contest_id}")
-    return None, None
+    raise ValueError(f"No snapshot found for contest {contest_id}")
 
 
 async def get_subsequent_contests(db: AsyncSession, contest_id: str):
@@ -216,12 +216,18 @@ async def replay_contest(db: AsyncSession, contest_id: str):
     """
     print(f"[REPLAY] Replaying contest {contest_id}")
     await rollback_contest_ratings_and_attendance(db, contest_id)
-    attendance, ranking_data = await fetch_contest_data_snapshot(db, contest_id)
-    if attendance is None or ranking_data is None:
-        print(f"[REPLAY] No snapshot for contest {contest_id}, skipping replay.")
-        return
+    try:
+        attendance, ranking_data = await fetch_contest_data_snapshot(db, contest_id)
+    except ValueError as e:
+        raise ValueError(f"Failed to replay contest {contest_id}: {e}")
+
+    # if attendance is None or ranking_data is None:  # This check is now handled by the ValueError from fetch_contest_data_snapshot
+    #     print(f"[REPLAY] No snapshot for contest {contest_id}, skipping replay.")
+    #     return
 
     contest = await get_contest(db=db, contest_id=contest_id)
+    if not contest:
+        raise ValueError(f"Contest {contest_id} not found during replay.")
     # Re-apply attendance
     for record in attendance:
         # Convert string status from snapshot back to Enum member

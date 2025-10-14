@@ -39,7 +39,10 @@ async def update_user_admin(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    updated_user = await crud_users.change_status_role_and_division(db, handle, body.status, body.role, body.division)
+    try:
+        updated_user = await crud_users.change_status_role_and_division(db, handle, body.status, body.role, body.division)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {e}")
 
     return updated_user
 
@@ -57,20 +60,22 @@ async def get_contests_by_division(
     return contests_list
 
 
-
 @router.delete("/contests/{contest_id}/preparers/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_preparer(
     contest_id: str,
-    user_id: str,
+    user_id: int,
     db: AsyncSession = Depends(get_db),
     current_admin = Depends(require_admin)
 ):
     """
     Admin-only: Revoke a user's preparer access for a specific contest.
     """
-    updated_contest = await contests.remove_preparers_from_contest(db, contest_id, [user_id])
-    if not updated_contest:
-        raise HTTPException(status_code=404, detail="Preparer not found for this contest")
+    try:
+        updated_contest = await contests.remove_preparers_from_contest(db, contest_id, [str(user_id)])
+        if not updated_contest:
+            raise HTTPException(status_code=404, detail="Preparer not found for this contest")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to revoke preparer access: {e}")
     # Return as Pydantic model (or a message if you prefer, but keep consistent with response_model)
     return contest_schemas.ContestRead.from_orm(updated_contest)
 
@@ -89,5 +94,9 @@ async def update_contest_preparers(
     if not contest:
         raise HTTPException(status_code=404, detail="Contest not found")
 
-    updated_contest = await contests.update_contest_preparers(db, contest_id, body.preparers)
+    try:
+        updated_contest = await contests.update_contest_preparers(db, contest_id, body.preparers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update contest preparers: {e}")
+
     return updated_contest

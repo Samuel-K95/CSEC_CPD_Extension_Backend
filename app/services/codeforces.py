@@ -11,10 +11,13 @@ async def verify_handle(handle: str) -> bool:
             r = await client.get(f"{BASE_URL}user.info", params={"handles": handle}, timeout=5)
             print("response json:", r.json())
             data = r.json()
-            return data.get("status") == "OK"
+            if data.get("status") != "OK":
+                raise ValueError(f"Codeforces API error: {data.get('comment', 'Unknown error')}")
+            return True
+    except httpx.RequestError as e:
+        raise ValueError(f"Network error verifying handle: {e}")
     except Exception as e:
-        print(f"Error verifying handle: {e}")
-        return False
+        raise ValueError(f"Error verifying handle: {e}")
 
 def extract_contest_id(contest_link: str) -> str:
     """
@@ -51,8 +54,7 @@ async def get_codeforces_standings_handles(contest_link: str, as_manager: bool =
 
         print("response json:", data)
         if data.get("status") != "OK":
-            print(f"Error from Codeforces API: {data.get('comment')}")
-            return {}
+            raise ValueError(f"Codeforces API error fetching standings: {data.get('comment', 'Unknown error')}")
 
         standings = {}
         for row in data["result"]["rows"]:
@@ -60,13 +62,10 @@ async def get_codeforces_standings_handles(contest_link: str, as_manager: bool =
             rank = row["rank"]
             standings[handle] = rank
 
-
         
         return standings
 
     except httpx.RequestError as e:
-        print(f"Error fetching standings: {e}")
-        return {}
+        raise ValueError(f"Network error fetching standings: {e}")
     except (KeyError, IndexError) as e:
-        print(f"Error parsing standings data: {e}")
-        return {}
+        raise ValueError(f"Error parsing standings data from Codeforces API: {e}")

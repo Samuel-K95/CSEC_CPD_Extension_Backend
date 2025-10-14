@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, exc
 from ..models import Division, User, UserStatus
 from ..schemas.user_schemas import UserCreate
 from ..security import hash_password
@@ -26,12 +26,22 @@ async def create_user(db: AsyncSession, user_in: UserCreate):
         hashed_password=hashed_password
     )
     db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        await db.commit()
+        await db.refresh(user)
+    except exc.IntegrityError as e:
+        await db.rollback()
+        if "codeforces_handle" in str(e):
+            raise ValueError("Codeforces handle already registered")
+        if "email" in str(e):
+            raise ValueError("Email already registered")
+        raise ValueError(f"Database error: {e}")
     return user
 
 async def change_status_role_and_division(db: AsyncSession, handle: str, status: UserStatus, role: str, division: Division):
     user = await get_user_by_handle(db, handle)
+    if not user:
+        raise ValueError(f"User with handle {handle} not found")
     user.status = status
     user.role = role
     user.division = division    

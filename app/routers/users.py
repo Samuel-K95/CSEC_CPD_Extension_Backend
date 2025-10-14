@@ -22,33 +22,41 @@ async def get_me(
     """
     Get the current user's profile, rating, and optionally rating history.
     """
-    user, rating = await users.get_user_with_rating(db, current_user.id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        user, rating = await users.get_user_with_rating(db, current_user.id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    history = None
-    if include_history:
-        history = await users.get_user_rating_history(db, current_user.id)
+        history = None
+        if include_history:
+            history = await users.get_user_rating_history(db, current_user.id)
 
-    return user_schemas.UserProfile(
-        id=user.id,
-        name=user.name,
-        email=user.email,
-        codeforces_handle=user.codeforces_handle,
-        division=user.division,
-        role=user.role,
-        current_rating=user.rating,
-        history=history
-    )
+        return user_schemas.UserProfile(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            codeforces_handle=user.codeforces_handle,
+            division=user.division,
+            role=user.role,
+            current_rating=user.rating,
+            history=history
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error retrieving user profile: {e}")
 
 @router.get("/all", response_model=list[user_schemas.UserRead])
 async def get_all_users(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """
     Return all users in the database. Requires authentication.
     """
-    users_list = await users.get_all_users(db)
-    # Convert SQLAlchemy User objects to Pydantic models
-    return [user_schemas.UserRead.from_orm(user) for user in users_list]
+    try:
+        users_list = await users.get_all_users(db)
+        # Convert SQLAlchemy User objects to Pydantic models
+        return [user_schemas.UserRead.from_orm(user) for user in users_list]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error retrieving all users: {e}")
 
 @router.get("/division/{division}", response_model=list[user_schemas.UserRead])
 async def get_users_by_division(division: str, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
@@ -56,29 +64,36 @@ async def get_users_by_division(division: str, db: AsyncSession = Depends(get_db
     Get all users in a specific division.
     """
     print("getting all users in division", division)
-    users_list = await users.get_users_by_division(db, division)
-    users_list = [user for user in users_list if user.status == "Active"]
-    return [user_schemas.UserRead.from_orm(user) for user in users_list]
+    try:
+        users_list = await users.get_users_by_division(db, division)
+        users_list = [user for user in users_list if user.status == "Active"]
+        return [user_schemas.UserRead.from_orm(user) for user in users_list]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error retrieving users by division: {e}")
 
 @router.put("/profile/{handle}", response_model=user_schemas.UserRead)
 async def update_user(handle: str, body: user_schemas.UserUpdate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
-    user = await users.get_user_by_handle(db, handle)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        user = await users.get_user_by_handle(db, handle)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    if body.codeforces_handle and body.codeforces_handle != user.codeforces_handle:
-        if not await verify_handle(body.codeforces_handle):
-            raise HTTPException(status_code=400, detail="Invalid Codeforces handle")
-        if await users.get_user_by_handle(db, body.codeforces_handle):
-            raise HTTPException(status_code=400, detail="Codeforces handle already in use")
+        if body.codeforces_handle and body.codeforces_handle != user.codeforces_handle:
+            if not await verify_handle(body.codeforces_handle):
+                raise HTTPException(status_code=400, detail="Invalid Codeforces handle")
+            if await users.get_user_by_handle(db, body.codeforces_handle):
+                raise HTTPException(status_code=400, detail="Codeforces handle already in use")
 
-    if body.email and body.email != user.email:
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, body.email):
-            raise HTTPException(status_code=400, detail="Invalid email format")
+        if body.email and body.email != user.email:
+            email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_regex, body.email):
+                raise HTTPException(status_code=400, detail="Invalid email format")
 
+        updated_user = await users.update_user(db, user.id, body.dict(exclude_unset=True))
+        print("updated user", updated_user)
 
-    updated_user = await users.update_user(db, user.id, body.dict(exclude_unset=True))
-    print("updated user", updated_user)
-
-    return user_schemas.UserRead.from_orm(updated_user)
+        return user_schemas.UserRead.from_orm(updated_user)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error updating user profile: {e}")

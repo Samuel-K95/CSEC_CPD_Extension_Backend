@@ -105,7 +105,7 @@ async def get_user_contests(db: AsyncSession, user) -> list[models.Contest]:
             select(Contest)
             .options(selectinload(Contest.preparers))
             .join(Attendance, Contest.id == Attendance.contest_id)
-            .filter(Attendance.user_id == str(user.id))
+            .filter(Attendance.user_id == user.id)
         )
         return result.scalars().all()
     

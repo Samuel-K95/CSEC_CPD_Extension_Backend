@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
@@ -17,26 +17,28 @@ async def get_leaderboard(
     Get leaderboard of all active users, filtered by the current user's division (from token).
     Admins see all divisions.
     """
+    try:
+        if hasattr(current_user, "role") and getattr(current_user, "role", None) == "Admin":
+            division = None
+        else:
+            division = getattr(current_user, "division", None)
+        results = await ratings.get_leaderboard(db, division)
 
-    if hasattr(current_user, "role") and getattr(current_user, "role", None) == "Admin":
-        division = None
-    else:
-        division = getattr(current_user, "division", None)
-    results = await ratings.get_leaderboard(db, division)
-
-    leaderboard = []
-    rank = 1
-    for user, rating in results:
-        leaderboard.append(
-            rating_schemas.LeaderboardEntry(
-                rank=rank,
-                user_id=user.id,
-                name=user.name,
-                codeforces_handle=user.codeforces_handle,
-                division=user.division,
-                current_rating=rating.current_rating
+        leaderboard = []
+        rank = 1
+        for user, rating in results:
+            leaderboard.append(
+                rating_schemas.LeaderboardEntry(
+                    rank=rank,
+                    user_id=user.id,
+                    name=user.name,
+                    codeforces_handle=user.codeforces_handle,
+                    division=user.division,
+                    current_rating=rating.current_rating
+                )
             )
-        )
-        rank += 1
+            rank += 1
 
-    return leaderboard
+        return leaderboard
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal Server Error getting leaderboard: {e}")
